@@ -59,36 +59,62 @@ exports.account = function(req, res) {
 	res.json(jsonresult);
 };
 
-exports.account_tx = function(req, res) {
+exports.account_txs = function(req, res) {
 	var accountaddr = req.params.id;
-	var offset = req.params.offset;
+	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
 	
 	global.log("account_tx called for " + accountaddr + " and offset " + offset);
 
-	//account = Account.getAccount(accountaddr);
+	var account = Account.getAccount(accountaddr);
 	
-	var account = new Account();
-	account.address = accountaddr;
+	// we return a maximum of max_returned_transactions transactions
 
-	global.log("account found ");
-
-	var tx_array_data = account.getTransactionsData();
+	var transactions = account.getTransactionsFrom(offset);
+	var jsondata = getTransactionsJson(transactions);
 	
-	if (tx_array_data !== false) {
-		  var jsonresult = {status: 1
-				  , data: [ tx_array_data ]};
+	if (jsondata !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsondata};
 	       	
-		  res.json(jsonresult);
-		
-	}
-	else {
-		  var error = 'could not get transactions for the account';
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
 		  var jsonresult = {status: 0
 				  , error: error};
-	
+
 		  res.json(jsonresult);
-		
-	}
+	  }
+};
+
+exports.account_txs_blocks = function(req, res) {
+	var accountaddr = req.params.id;
+	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 0);
+	var fromBlock = (req.params.start !== undefined ? parseInt(req.params.start) : 0);
+	var toBlock = (req.params.finish !== undefined ? parseInt(req.params.finish) : null);
+	
+	global.log("account_tx called for " + accountaddr + " and offset " + offset + " from block " + fromBlock + " to block " + toBlock);
+
+	var account = Account.getAccount(accountaddr);
+	
+	// we return a maximum of max_returned_transactions transactions
+
+	var transactions = account.getTransactionsWithin(offset, fromBlock, toBlock);
+	var jsondata = getTransactionsJson(transactions);
+	
+	if (jsondata !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsondata};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
 };
 
 // blocks Routes
@@ -179,16 +205,18 @@ exports.block = function(req, res) {
 exports.block_transactions = function(req, res) {
 	var blockId = req.params.id;
 	var block = Block.getBlock(blockId);
-	var blockdata = block.getTransactions();
 	
-	if (blockdata !== null) {
-		  var jsonresult = {status: 1
-				  , data: [ blockdata ]};
+	var transactions = block.getTransactions();
+	var jsondata = getTransactionsJson(transactions);
+	
+	if (jsondata !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsondata};
 	       	
-		  res.json(jsonresult);
+		res.json(jsonresult);
 		  
 	  } else {
-		  var error = 'could not get block data';
+		  var error = 'could not get any transaction';
 		  var jsonresult = {status: 0
 				  , error: error};
 
@@ -265,24 +293,72 @@ exports.transactions_count = function(req, res) {
 	  }
 };
 
+function getTransactionJson(transaction) {
+	
+	var data = transaction.getData();
+	
+	var transactiontimestring = "" + new Date(transaction.time * 1000).toGMTString() + ""
+	
+	var json = {
+			hash: transaction.hash,
+			sender: transaction.sender,
+			recipient: transaction.recipient,
+			accountNonce: transaction.accountNonce,
+			price: transaction.price,
+			gasLimit: transaction.gasLimit,
+			amount: transaction.amount,
+			block_id: transaction.block_id,
+			time: transaction.time,
+			newContract: transaction.newContract,
+			isContractTx: transaction.isContractTx,
+			blockHash: transaction.blockHash,
+			parentHash: transaction.parentHash,
+			txIndex: transaction.txIndex,
+			gasUsed: transaction.gasUsed,
+			type: transaction.type,
+			
+			
+			data: data};
+	
+	return json;
+};
+
+function getTransactionsJson(transactions) {
+	var jsondata = [];
+	
+	if (transactions !== false) { 
+		var jsondata = [];
+		
+		for (var i = 0, len = transactions.length; i < len; i++) {
+			var transaction = transactions[i];
+			var txjson = getTransactionJson(transaction);
+			jsondata.push(txjson);
+		}
+		
+		  
+	  } else {
+		  jsondata = false;
+	  }
+	
+	return jsondata;
+}
 
 
 exports.transactions = function(req, res) {
 	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
 	var count = (req.params.count !== undefined ? parseInt(req.params.count) : 1);
 
-	var count = Transaction.getTransactions(offset, count);
+	var transactions = Transaction.getTransactions(offset, count);
+	var jsondata = getTransactionsJson(transactions);
 	
-	if (count !== false) { 
-		var jsondata = {count : count };
-		
+	if (jsondata !== false) { 
 		var jsonresult = {status: 1
-				  , data: [ jsondata ]};
+				  , data: jsondata};
 	       	
 		res.json(jsonresult);
 		  
 	  } else {
-		  var error = 'could not get transaction count';
+		  var error = 'could not get any transaction';
 		  var jsonresult = {status: 0
 				  , error: error};
 

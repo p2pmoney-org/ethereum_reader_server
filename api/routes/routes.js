@@ -33,8 +33,20 @@ module.exports = function(app) {
   .delete(todoList.delete_a_task);*/
 
  // account transactions
-  app.route(route_root_path + '/account/:id/tx/:offset')
-  .get(Controller.account_tx);
+  app.route(route_root_path + '/account/:id/tx')
+  .get(Controller.account_txs);
+  app.route(route_root_path + '/account/:id/tx/:offset') // to be compatible with etherchain.org
+  .get(Controller.account_txs);
+  app.route(route_root_path + '/account/:id/txs') 
+  .get(Controller.account_txs);
+ app.route(route_root_path + '/account/:id/txs/:offset') 
+  .get(Controller.account_txs);
+ app.route(route_root_path + '/account/:id/txs/:offset/blocks/') 
+ .get(Controller.account_txs_blocks);
+ app.route(route_root_path + '/account/:id/txs/:offset/blocks/:start') 
+ .get(Controller.account_txs_blocks);
+  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:start/:finish') 
+  .get(Controller.account_txs_blocks);
 
   
   // blocks
@@ -49,7 +61,7 @@ module.exports = function(app) {
   // block
   app.route(route_root_path + '/block/:id')
   .get(Controller.block);
-  app.route(route_root_path + '/block/:id/tx') // to be compatible
+  app.route(route_root_path + '/block/:id/tx') // to be compatible with etherchain.org
   .get(Controller.block_transactions);
   app.route(route_root_path + '/block/:id/txs')
   .get(Controller.block_transactions);
