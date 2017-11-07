@@ -26,6 +26,8 @@ module.exports = function(app) {
   // account
   app.route(route_root_path + '/account/:id')
   .get(Controller.account);
+  app.route(route_root_path + '/account/multiple/:ids')
+  .get(Controller.accounts);
 
   /*  app.route('/accounts/:accountId')
   .get(todoList.read_a_task)
