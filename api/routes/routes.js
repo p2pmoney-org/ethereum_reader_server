@@ -34,7 +34,19 @@ module.exports = function(app) {
   .put(todoList.update_a_task)
   .delete(todoList.delete_a_task);*/
 
- // account transactions
+  // account source
+  app.route(route_root_path + '/account/:id/source')
+  .get(Controller.account_source);
+  
+  // account mining
+  app.route(route_root_path + '/account/:id/mined')
+  .get(Controller.account_mined);
+  app.route(route_root_path + '/account/:id/miningHistory')
+  .get(Controller.account_mininghistory);
+  app.route(route_root_path + '/account/:id/miningUncleHistory')
+  .get(Controller.account_miningunclehistory);
+
+  // account transactions
   app.route(route_root_path + '/account/:id/tx')
   .get(Controller.account_txs);
   app.route(route_root_path + '/account/:id/tx/:offset') // to be compatible with etherchain.org

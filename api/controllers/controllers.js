@@ -116,7 +116,63 @@ exports.accounts = function(req, res) {
 	res.json(jsonresult);
 };
 
+// source
+exports.account_source = function(req, res) {
+	var accountaddr = req.params.id;
+	
+	global.log("account_source called for " + accountaddr );
 
+	var account = Account.getAccount(accountaddr);
+	
+	// we return a maximum of max_returned_transactions transactions
+
+	var transactions = account.getTransactionsFrom(offset);
+	var jsonarray = []; //TODO: fill source data
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get the source';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+// account mining
+exports.account_mined = function(req, res) {
+	  var error = 'not implemented yet';
+	  var jsonresult = {status: 0
+			  , error: error};
+
+	  res.json(jsonresult);
+	
+};
+
+exports.account_mininghistory = function(req, res) {
+	  var error = 'not implemented yet';
+	  var jsonresult = {status: 0
+			  , error: error};
+
+	  res.json(jsonresult);
+	
+};
+
+exports.account_miningunclehistory = function(req, res) {
+	  var error = 'not implemented yet';
+	  var jsonresult = {status: 0
+			  , error: error};
+
+	  res.json(jsonresult);
+	
+};
+
+// transactions
 exports.account_txs = function(req, res) {
 	var accountaddr = req.params.id;
 	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
