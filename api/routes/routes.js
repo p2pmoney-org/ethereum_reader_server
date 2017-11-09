@@ -41,6 +41,8 @@ module.exports = function(app) {
   // account mining
   app.route(route_root_path + '/account/:id/mined')
   .get(Controller.account_mined);
+  app.route(route_root_path + '/account/:id/mined/:full')
+  .get(Controller.account_mined);
   app.route(route_root_path + '/account/:id/miningHistory')
   .get(Controller.account_mininghistory);
   app.route(route_root_path + '/account/:id/miningUncleHistory')

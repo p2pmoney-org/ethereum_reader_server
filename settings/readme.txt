@@ -11,5 +11,11 @@ config.json
 "web3_provider_port": 8545,
 "max_processed_blocks": 5000,
 "max_returned_blocks": 2000,
-"max_returned_transactions": 100
+"max_returned_transactions": 100,
+"block_map_factor_size":20,
+"max_block_map_factor_size":40,
+"enable_anonymous_request_limit": 1,
+"max_anonymous_request_limit_windows": 600000,
+"max_anonymous_request_limit_limit": 10,
+"apikeys": {"client1": "apikey1","client2": "apikey2"}
 }

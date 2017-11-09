@@ -124,37 +124,52 @@ exports.account_source = function(req, res) {
 
 	var account = Account.getAccount(accountaddr);
 	
-	// we return a maximum of max_returned_transactions transactions
-
-	var transactions = account.getTransactionsFrom(offset);
-	var jsonarray = []; //TODO: fill source data
-	
-	if (jsonarray !== false) { 
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get the source';
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-};
-
-// account mining
-exports.account_mined = function(req, res) {
 	  var error = 'not implemented yet';
 	  var jsonresult = {status: 0
 			  , error: error};
 
 	  res.json(jsonresult);
+};
+
+// account mining
+exports.account_mined = function(req, res) {
+	var accountaddr = req.params.id;
+	var bforcefullsearch = (req.params.full && (req.params.full == "full") ? true : false);
 	
+	var account = Account.getAccount(accountaddr);
+
+	// we get list of blocks within max_processed_blocks if bforcefullsearch = false
+	var blocks = account.getMinedBlocks(bforcefullsearch);
+	
+	if (blocks !== undefined) {
+		var jsonarray = getBlocksJsonArray(blocks);
+		
+		if (jsonarray !== false) { 
+			var jsonresult = {status: 1
+					  , data: jsonarray};
+		
+			res.json(jsonresult);
+		}
+		else {
+			var error = 'could not write json response';
+			var jsonresult = {status: 0
+					, error: error};
+
+			res.json(jsonresult);
+		}
+		  
+	  } else {
+		  var error = 'could not get latest block';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
 };
 
 exports.account_mininghistory = function(req, res) {
+	var accountaddr = req.params.id;
+	
 	  var error = 'not implemented yet';
 	  var jsonresult = {status: 0
 			  , error: error};
@@ -164,6 +179,8 @@ exports.account_mininghistory = function(req, res) {
 };
 
 exports.account_miningunclehistory = function(req, res) {
+	var accountaddr = req.params.id;
+	
 	  var error = 'not implemented yet';
 	  var jsonresult = {status: 0
 			  , error: error};
@@ -280,7 +297,7 @@ function getBlockJson(block) {
 			blockTime: blockTime,
 			reward: reward,
 			totalFee: totalFee,			
-			data: [data]};
+			web3data: [data]};
 
 	return json;
 };
@@ -291,6 +308,9 @@ function getBlocksJsonArray(blocks) {
 	
 	for (var i = 0; i < blocks.length; i++) {
 		jsonarray.push(getBlockJson(blocks[i]));
+		
+		if (i > global.max_returned_blocks)
+			break;
 	}
 	
 	return jsonarray;
@@ -518,7 +538,7 @@ function getTransactionJson(transaction) {
 			type: type,
 			
 			
-			data: data};
+			web3data: data};
 	
 	return json;
 };
