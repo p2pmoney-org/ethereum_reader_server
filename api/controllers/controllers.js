@@ -37,6 +37,37 @@ exports.version_support = function(req, res) {
 	
 }
 
+// ethereum node Routes
+var EthNode = require('../../lib/includes/ethnode.js');
+
+exports.node = function(req, res) {
+	var ethnode = EthNode.getEthNode();
+	
+	var islistening = ethnode.isListening();
+	var peercount = ethnode.getPeerCount();
+	var issyncing = ethnode.isSyncing();
+	var currentblock = ethnode.getCurrentBlockNumber();
+	var highestblock = ethnode.getHighestBlockNumber();
+	
+	var json = {
+			islistening: islistening,
+			peercount: peercount,
+			issyncing: issyncing,
+			currentblock: currentblock,
+			highestblock: highestblock
+	};
+	
+	var jsonresult = {status: 1
+			, data: [json]};
+	
+	global.log('/node json result is ' + JSON.stringify(jsonresult));
+	
+	res.json(jsonresult);
+	
+}
+
+
+
 // account Routes
 var Account = require('../../lib/includes/account.js');
 
@@ -50,6 +81,8 @@ function getAccountJson(account) {
 	var storage = account.getStorage();
 	var firstseen = new Date(account.getUnixFirstSeenTimeStamp()).toISOString();
 	var transactioncount = account.getTransactionCount();
+	var currentblocknumber = account.currentblocknumber;
+	var new_blocks_seen = account.newblocksseen;
 	
 	var json = {address: accountaddr,
 				balance: balance,
@@ -58,7 +91,9 @@ function getAccountJson(account) {
 				name: name,
 				storage: storage,
 				firstseen: firstseen,
-				transactioncount: transactioncount
+				transactioncount: transactioncount,
+				currentblocknumber: currentblocknumber,
+				new_blocks_seen: new_blocks_seen
 				};
 	
 	return json;
@@ -142,24 +177,22 @@ exports.account_mined = function(req, res) {
 	var blocks = account.getMinedBlocks(bforcefullsearch);
 	
 	if (blocks !== undefined) {
-		var jsonarray = getBlocksJsonArray(blocks);
+		var jsonarray = [];
 		
-		if (jsonarray !== false) { 
-			var jsonresult = {status: 1
-					  , data: jsonarray};
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
+			jsonarray.push({number: blocknumber, time: blocktime});
+		}
 		
-			res.json(jsonresult);
-		}
-		else {
-			var error = 'could not write json response';
-			var jsonresult = {status: 0
-					, error: error};
-
-			res.json(jsonresult);
-		}
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
 		  
 	  } else {
-		  var error = 'could not get latest block';
+		  var error = 'could not get latest mined blocks';
 		  var jsonresult = {status: 0
 				  , error: error};
 	
@@ -167,14 +200,102 @@ exports.account_mined = function(req, res) {
 	  }
 };
 
-exports.account_mininghistory = function(req, res) {
+exports.account_mined_full = function(req, res) {
+	req.params.full = "full";
+	
+	return exports.account_mined(req, res);
+}
+
+
+exports.account_mined_today = function(req, res) {
+	// returned the numbers of blocks mined for current day from an account
 	var accountaddr = req.params.id;
 	
-	  var error = 'not implemented yet';
-	  var jsonresult = {status: 0
-			  , error: error};
+	var account = Account.getAccount(accountaddr);
 
-	  res.json(jsonresult);
+	var blocks = account.getMinedBlocksToday();
+	
+	if (blocks !== undefined) {
+		var jsonarray = [];
+		
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
+			jsonarray.push({number: blocknumber, time: blocktime});
+		}
+		
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+	} else {
+		  var error = 'could not get today\'s blocks';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
+	
+};
+
+exports.account_mininghistory = function(req, res) {
+	// returned the numbers of blocks mined for current day from an account
+	var accountaddr = req.params.id;
+	
+	var account = Account.getAccount(accountaddr);
+	
+	var ndays = 60;
+
+	var blocks = account.getMinedBlocksPastDays(ndays);
+	
+	if (blocks !== undefined) {
+		var jsonarray = [];
+		
+		// we initialize a map with the last month days
+		var zero_am_timestamp = global.getZeroAMTimeStamp();
+		
+		var historyarray = [];
+		var timestamp = zero_am_timestamp;
+		
+		for (i = 0; i < ndays + 1; i++) {
+			historyarray[i] = new Object();
+			historyarray[i].time = timestamp;
+			historyarray[i].count = 0;
+			
+			timestamp -= 24*60*60*1000;
+		}
+		
+		// we count the blocks mined each day
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			global.log("i is " + i);
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = block.getUnixBlockTimeStamp();
+			var index = Math.trunc(((blocktime - zero_am_timestamp) > 0 ? blocktime - zero_am_timestamp : (zero_am_timestamp - blocktime) + 1) / (24*60*60*1000));
+			global.log("index is " + index);
+				
+			historyarray[index].count = historyarray[index].count + 1;
+		}
+		
+		// build the json array
+		for (var i = 0, len = historyarray.length; i < len; i++) {
+			var day = new Date(historyarray[i].time).toISOString();
+			var count = historyarray[i].count;
+			jsonarray.push({day: day, minedBlocks: count});
+		}
+		
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+	} else {
+		  var error = 'could not get history blocks';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
 	
 };
 
@@ -189,7 +310,7 @@ exports.account_miningunclehistory = function(req, res) {
 	
 };
 
-// transactions
+// account transactions
 exports.account_txs = function(req, res) {
 	var accountaddr = req.params.id;
 	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
@@ -218,13 +339,13 @@ exports.account_txs = function(req, res) {
 	  }
 };
 
-exports.account_txs_blocks = function(req, res) {
+exports.account_txs_in_blocks = function(req, res) {
 	var accountaddr = req.params.id;
 	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 0);
-	var fromBlock = (req.params.start !== undefined ? parseInt(req.params.start) : 0);
-	var toBlock = (req.params.finish !== undefined ? parseInt(req.params.finish) : null);
+	var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
+	var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : null);
 	
-	global.log("account_tx called for " + accountaddr + " and offset " + offset + " from block " + fromBlock + " to block " + toBlock);
+	global.log("account_txs_in_blocks called for " + accountaddr + " and offset " + offset + " from block " + fromBlock + " to block " + toBlock);
 
 	var account = Account.getAccount(accountaddr);
 	
@@ -271,9 +392,10 @@ function getBlockJson(block) {
 	var tx_count = block.tx_count;
 	var uncle_count = block.uncle_count;
 	var size = block.size;
-	var blockTime = new Date(block.getUnixBlockTimeStamp()).toISOString();
+	var blockTime = block.getBlockTimeTaken();
 	var reward = block.reward;
 	var totalFee = block.totalFee;
+	var totalDifficulty = block.totalDifficulty;
 	
 	var data = block.getData();
 	
@@ -297,7 +419,9 @@ function getBlockJson(block) {
 			blockTime: blockTime,
 			reward: reward,
 			totalFee: totalFee,			
-			web3data: [data]};
+			totalDifficulty: totalDifficulty/*,
+			web3data: [data]*/
+	};
 
 	return json;
 };
@@ -323,7 +447,41 @@ exports.blocks = function(req, res) {
 	
     global.log("/blocks called offset is " + offset + " and count is " + count);
 
-    var blocks = Block.getBlocks(offset, count);
+    var blocks = Block.getLastBlocks(offset, count);
+	
+	if (blocks !== undefined) {
+		var jsonarray = getBlocksJsonArray(blocks);
+		
+		if (jsonarray !== false) { 
+			var jsonresult = {status: 1
+					  , data: jsonarray};
+		
+			res.json(jsonresult);
+		}
+		else {
+			var error = 'could not write json response';
+			var jsonresult = {status: 0
+					, error: error};
+
+			res.json(jsonresult);
+		}
+		  
+	  } else {
+		  var error = 'could not get latest block';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
+};
+
+exports.blocks_range = function(req, res) {
+	var fromblock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
+	var toblock = (req.params.to !== undefined ? parseInt(req.params.to) : global.max_returned_blocks);
+	
+    global.log("/blocks/range called from " + fromblock + " to " + toblock);
+
+    var blocks = Block.getBlocksRange(fromblock, toblock);
 	
 	if (blocks !== undefined) {
 		var jsonarray = getBlocksJsonArray(blocks);
@@ -355,7 +513,6 @@ exports.blocks_count = function(req, res) {
 	var block = Block.getLatestBlock();
 	var blocknumber = block.getBlockNumber();
 	
-	
 	if (blocknumber != -1) {
 		  var jsonresult = {status: 1
 				  , data: [ {count: blocknumber}]};
@@ -371,6 +528,35 @@ exports.blocks_count = function(req, res) {
 	  }
 
 };
+
+exports.blocks_range_txs = function(req, res) {
+	var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
+	var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : global.max_returned_blocks);
+	
+	global.log("blocks_range_txs called from block " + fromBlock + " to block " + toBlock);
+
+	// we return all the transactions (no limit on number of transactions)
+	// for max returned number of blocks
+
+	var transactions = Transaction.getBlocksRangeTransactions(fromBlock, toBlock);
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+
 
 // block Routes
 exports.block = function(req, res) {
@@ -460,13 +646,23 @@ var Transaction = require('../../lib/includes/transaction.js');
 exports.transaction = function(req, res) {
 	var txahash = req.params.id;
 	var transaction = Transaction.getTransaction(txahash);
-	var txdata = transaction.getData();
 	
-	if (txdata !== null) {
-		  var jsonresult = {status: 1
-				  , data: [ txdata ]};
-	       	
-		  res.json(jsonresult);
+	if (transaction !== null) {
+		var json = getTransactionJson(transaction)
+		
+		if (json !== false) {
+			  var jsonresult = {status: 1
+					  , data: [ json ]};
+		       	
+			  res.json(jsonresult);
+			  
+		  } else {
+			  var error = 'could not get transaction json';
+			  var jsonresult = {status: 0
+					  , error: error};
+
+			  res.json(jsonresult);
+		  }
 		  
 	  } else {
 		  var error = 'could not get transaction data';
@@ -501,6 +697,7 @@ exports.transactions_count = function(req, res) {
 function getTransactionJson(transaction) {
 	
 	var data = transaction.getData();
+	var receiptdata = transaction.getTransactionReceiptData();
 	
 	var hash = transaction.hash;
 	var sender = transaction.sender;
@@ -516,7 +713,7 @@ function getTransactionJson(transaction) {
 	var blockHash = transaction.blockHash;
 	var parentHash = transaction.parentHash;
 	var txIndex = transaction.txIndex;
-	var gasUsed = transaction.gasUsed;
+	var gasUsed = transaction.getGasUsed();
 	var type = transaction.type;
 	
 	var json = {
@@ -535,10 +732,11 @@ function getTransactionJson(transaction) {
 			parentHash: parentHash,
 			txIndex: txIndex,
 			gasUsed: gasUsed,
-			type: type,
+			type: type/*,
 			
 			
-			web3data: data};
+			web3data: data,
+			web3receiptdata: data*/};
 	
 	return json;
 };

@@ -22,6 +22,11 @@ module.exports = function(app) {
 
   app.route(route_root_path + '/version/support')
   .get(Controller.version_support);
+  
+  // ethereum node
+  app.route(route_root_path + '/node')
+  .get(Controller.node);
+
 
   // account
   app.route(route_root_path + '/account/:id')
@@ -41,8 +46,10 @@ module.exports = function(app) {
   // account mining
   app.route(route_root_path + '/account/:id/mined')
   .get(Controller.account_mined);
-  app.route(route_root_path + '/account/:id/mined/:full')
-  .get(Controller.account_mined);
+  app.route(route_root_path + '/account/:id/mined/full')
+  .get(Controller.account_mined_full);
+  app.route(route_root_path + '/account/:id/mined/today')
+  .get(Controller.account_mined_today);
   app.route(route_root_path + '/account/:id/miningHistory')
   .get(Controller.account_mininghistory);
   app.route(route_root_path + '/account/:id/miningUncleHistory')
@@ -58,21 +65,24 @@ module.exports = function(app) {
  app.route(route_root_path + '/account/:id/txs/:offset') 
   .get(Controller.account_txs);
  app.route(route_root_path + '/account/:id/txs/:offset/blocks/') 
- .get(Controller.account_txs_blocks);
- app.route(route_root_path + '/account/:id/txs/:offset/blocks/:start') 
- .get(Controller.account_txs_blocks);
-  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:start/:finish') 
-  .get(Controller.account_txs_blocks);
+ .get(Controller.account_txs_in_blocks);
+ app.route(route_root_path + '/account/:id/txs/:offset/blocks/:from') 
+ .get(Controller.account_txs_in_blocks);
+  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:from/:to/txs') 
+  .get(Controller.account_txs_in_blocks);
 
   
   // blocks
   app.route(route_root_path + '/blocks')
     .get(Controller.blocks);
-  app.route(route_root_path + '/blocks/:offset/:count')
+  app.route(route_root_path + '/blocks/:offset/:count') // to be compatible with etherchain.org
   .get(Controller.blocks);
   app.route(route_root_path + '/blocks/count')
     .get(Controller.blocks_count);
- //   .post(todoList.create_a_task);
+  app.route(route_root_path + '/blocks/range/:from/:to')
+  .get(Controller.blocks_range);
+  app.route(route_root_path + '/blocks/range/:from/:to/txs')
+  .get(Controller.blocks_range_txs);
  
   // block
   app.route(route_root_path + '/block/:id')
