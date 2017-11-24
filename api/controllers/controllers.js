@@ -67,6 +67,108 @@ exports.node = function(req, res) {
 }
 
 
+exports.node_hashrate = function(req, res) {
+	var ethnode = EthNode.getEthNode();
+	
+	var hashrate = ethnode.getHashRate();
+	
+	if (hashrate !== false) {
+		  var json = {hashrate: hashrate};
+		
+		  var jsonresult = {status: 1
+				  , data: [json]};
+		  
+		  global.log('/node/hashrate json result is ' + JSON.stringify(jsonresult));
+		  
+		  res.json(jsonresult);
+		  
+	  } else {
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+}
+
+
+//statistics
+var Statistics = require('../../lib/includes/statistics.js');
+
+exports.difficulty = function(req, res) {
+	var lastblock = Block.getLatestBlock();
+	var difficulty = lastblock.getDifficulty();
+	
+	if (difficulty !== false) {
+		  var json = {difficulty: difficulty};
+		  var jsonresult = {status: 1
+				  , data: [json]};
+		  
+		  
+		  global.log('/difficulty json result is ' + JSON.stringify(jsonresult));
+		  
+		  res.json(jsonresult);
+		  
+	  } else {
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+exports.gasPrice = function(req, res) {
+	var gasPrice = Statistics.getGasPrice();
+	
+	if (gasPrice !== false) {
+		  var json = {gasprice: gasPrice};
+		  var jsonresult = {status: 1
+				  , data: [json]};
+		  
+		  
+		  global.log('/gasPrice json result is ' + JSON.stringify(jsonresult));
+		  
+		  res.json(jsonresult);
+		  
+	  } else {
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+}
+
+exports.miningEstimator = function(req, res) {
+	var miningEstimate = Statistics.getMiningEstimate();
+	
+	if (miningEstimate !== false) {
+		var blockTime = miningEstimate['blockTime'];
+		var difficulty = miningEstimate['difficulty'];
+		var hashRate = miningEstimate['hashRate'];
+		
+		
+		var json =  {
+			blockTime: blockTime,
+			difficulty: difficulty,
+			hashRate: hashRate
+		};
+  
+		var jsonresult = {status: 1
+				, data: [json]};
+  
+  
+		global.log('/miningEstimator json result is ' + JSON.stringify(jsonresult));
+		  
+		res.json(jsonresult);
+		  
+	  } else {
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+}
+
+
 
 // account Routes
 var Account = require('../../lib/includes/account.js');
@@ -369,6 +471,75 @@ exports.account_txs_in_blocks = function(req, res) {
 	  }
 };
 
+exports.account_txs_before_block = function(req, res) {
+	var accountaddr = req.params.id;
+	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
+	
+	global.log("account_txs_before_block called for " + accountaddr + " and blockid " + blockid);
+
+	var account = Account.getAccount(accountaddr);
+	
+	// we return a maximum of max_returned_transactions transactions
+
+	var transactions;
+	
+	if (blockid != -1)
+		transactions = account.getTransactionsBefore(blockid);
+	else
+		transactions = account.getTransactions(offset, fromBlock, toBlock);
+		
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+exports.account_txs_after_block = function(req, res) {
+	var accountaddr = req.params.id;
+	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
+	
+	global.log("account_txs_after_block called for " + accountaddr + " and blockid " + blockid);
+
+	var account = Account.getAccount(accountaddr);
+	
+	// we return a maximum of max_returned_transactions transactions
+
+	var transactions;
+	
+	if (blockid != -1)
+		transactions = account.getTransactionsAfter(blockid);
+	else
+		transactions = account.getTransactions(offset, fromBlock, toBlock);
+		
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+
 // blocks Routes
 var Block = require('../../lib/includes/block.js');
 
@@ -393,8 +564,8 @@ function getBlockJson(block) {
 	var uncle_count = block.uncle_count;
 	var size = block.size;
 	var blockTime = block.getBlockTimeTaken();
-	var reward = block.reward;
-	var totalFee = block.totalFee;
+	var reward = block.getReward();
+	var totalFee = block.getTotalFee();
 	var totalDifficulty = block.totalDifficulty;
 	
 	var data = block.getData();
@@ -615,30 +786,6 @@ exports.block_transactions = function(req, res) {
 	  }
 };
 
-
-// statistics
-var Statistics = require('../../lib/includes/statistics.js');
-
-exports.difficulty = function(req, res) {
-};
-
-exports.gasPrice = function(req, res) {
-	var gasPrice = Statistics.getGasPrice();
-	
-	if (gasPrice !== false) {
-		  var jsonresult = {result: {gasprice: gasPrice}};
-		  
-		  global.log('getGasPrice result is ' + JSON.stringify(jsonresult));
-		  
-		  res.json(jsonresult);
-		  
-	  } else {
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-}
 
 // tx Routes
 var Transaction = require('../../lib/includes/transaction.js');

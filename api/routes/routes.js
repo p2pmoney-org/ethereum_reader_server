@@ -27,6 +27,20 @@ module.exports = function(app) {
   app.route(route_root_path + '/node')
   .get(Controller.node);
 
+  app.route(route_root_path + '/node/hashrate')
+  .get(Controller.node_hashrate);
+  
+  // statistics
+  app.route(route_root_path + '/difficulty')
+  .get(Controller.difficulty);
+
+  app.route(route_root_path + '/gasPrice')
+  .get(Controller.gasPrice);
+  
+  app.route(route_root_path + '/miningEstimator')
+  .get(Controller.miningEstimator);
+  
+ 
 
   // account
   app.route(route_root_path + '/account/:id')
@@ -68,8 +82,12 @@ module.exports = function(app) {
  .get(Controller.account_txs_in_blocks);
  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:from') 
  .get(Controller.account_txs_in_blocks);
-  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:from/:to/txs') 
+  app.route(route_root_path + '/account/:id/txs/:offset/blocks/:from/:to') 
   .get(Controller.account_txs_in_blocks);
+  app.route(route_root_path + '/account/:id/txs/:offset/before-block/:blockid') 
+  .get(Controller.account_txs_before_block);
+  app.route(route_root_path + '/account/:id/txs/:offset/after-block/:blockid') 
+  .get(Controller.account_txs_after_block);
 
   
   // blocks
@@ -93,14 +111,6 @@ module.exports = function(app) {
   .get(Controller.block_transactions);
   
   
-  // statistics
-  app.route(route_root_path + '/difficulty')
-  .get(Controller.difficulty);
-
-  app.route(route_root_path + '/gasPrice')
-  .get(Controller.gasPrice);
-  
-   
   // transactions
   app.route(route_root_path + '/tx/:id')
   .get(Controller.transaction);
