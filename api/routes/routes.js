@@ -42,16 +42,44 @@ module.exports = function(app) {
   
  
 
+  
+  // blocks
+  app.route(route_root_path + '/blocks')
+    .get(Controller.blocks);
+  app.route(route_root_path + '/blocks/:offset/:count') // to be compatible with etherchain.org
+  .get(Controller.blocks);
+  app.route(route_root_path + '/blocks/count')
+    .get(Controller.blocks_count);
+  app.route(route_root_path + '/blocks/range/:from/:to')
+  .get(Controller.blocks_range);
+  app.route(route_root_path + '/blocks/range/:from/:to/txs')
+  .get(Controller.blocks_range_txs);
+ 
+  // block
+  app.route(route_root_path + '/block/:id')
+  .get(Controller.block);
+  app.route(route_root_path + '/block/:id/tx') // to be compatible with etherchain.org
+  .get(Controller.block_transactions);
+  app.route(route_root_path + '/block/:id/txs')
+  .get(Controller.block_transactions);
+  
+  
+  // transactions
+  app.route(route_root_path + '/tx/:id')
+  .get(Controller.transaction);
+
+  app.route(route_root_path + '/txs/count/:id')
+  .get(Controller.transactions_count);
+
+  app.route(route_root_path + '/txs/:offset/:count')
+  .get(Controller.transactions);
+
+
   // account
   app.route(route_root_path + '/account/:id')
   .get(Controller.account);
   app.route(route_root_path + '/account/multiple/:ids')
   .get(Controller.accounts);
-
-  /*  app.route('/accounts/:accountId')
-  .get(todoList.read_a_task)
-  .put(todoList.update_a_task)
-  .delete(todoList.delete_a_task);*/
 
   // account source
   app.route(route_root_path + '/account/:id/source')
@@ -89,37 +117,7 @@ module.exports = function(app) {
   app.route(route_root_path + '/account/:id/txs/:offset/after-block/:blockid') 
   .get(Controller.account_txs_after_block);
 
-  
-  // blocks
-  app.route(route_root_path + '/blocks')
-    .get(Controller.blocks);
-  app.route(route_root_path + '/blocks/:offset/:count') // to be compatible with etherchain.org
-  .get(Controller.blocks);
-  app.route(route_root_path + '/blocks/count')
-    .get(Controller.blocks_count);
-  app.route(route_root_path + '/blocks/range/:from/:to')
-  .get(Controller.blocks_range);
-  app.route(route_root_path + '/blocks/range/:from/:to/txs')
-  .get(Controller.blocks_range_txs);
  
-  // block
-  app.route(route_root_path + '/block/:id')
-  .get(Controller.block);
-  app.route(route_root_path + '/block/:id/tx') // to be compatible with etherchain.org
-  .get(Controller.block_transactions);
-  app.route(route_root_path + '/block/:id/txs')
-  .get(Controller.block_transactions);
   
   
-  // transactions
-  app.route(route_root_path + '/tx/:id')
-  .get(Controller.transaction);
-
-  app.route(route_root_path + '/txs/count/:id')
-  .get(Controller.transactions_count);
-
-  app.route(route_root_path + '/txs/:offset/:count')
-  .get(Controller.transactions);
-
-
 };

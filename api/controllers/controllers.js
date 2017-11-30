@@ -4,9 +4,28 @@
 
 'use strict';
 
+
+// requires
+// should be in this precise order to respect
+// the non circular depedencies of objects
 var Global = require('../../lib/includes/global.js');
 
 var global = Global.getGlobalInstance();
+
+var Utility = require('../../lib/includes/utility.js');
+
+var EthNode = require('../../lib/includes/ethnode.js');
+
+var Statistics = require('../../lib/includes/statistics.js');
+
+var Block = require('../../lib/includes/block.js');
+
+var Transaction = require('../../lib/includes/transaction.js');
+
+var Account = require('../../lib/includes/account.js');
+
+
+
 
 //global Routes
 exports.version = function(req, res) {
@@ -38,7 +57,6 @@ exports.version_support = function(req, res) {
 }
 
 // ethereum node Routes
-var EthNode = require('../../lib/includes/ethnode.js');
 
 exports.node = function(req, res) {
 	var ethnode = EthNode.getEthNode();
@@ -92,7 +110,6 @@ exports.node_hashrate = function(req, res) {
 
 
 //statistics
-var Statistics = require('../../lib/includes/statistics.js');
 
 exports.difficulty = function(req, res) {
 	var lastblock = Block.getLatestBlock();
@@ -169,380 +186,7 @@ exports.miningEstimator = function(req, res) {
 }
 
 
-
-// account Routes
-var Account = require('../../lib/includes/account.js');
-
-function getAccountJson(account) {
-	
-	var accountaddr = account.getAddress();
-	var balance = account.getBalance();
-	var nonce = account.getNonce();
-	var code = account.getCode();
-	var name = account.getName();
-	var storage = account.getStorage();
-	var firstseen = new Date(account.getUnixFirstSeenTimeStamp()).toISOString();
-	var transactioncount = account.getTransactionCount();
-	var currentblocknumber = account.currentblocknumber;
-	var new_blocks_seen = account.newblocksseen;
-	
-	var json = {address: accountaddr,
-				balance: balance,
-				nonce: nonce,
-				code: code,
-				name: name,
-				storage: storage,
-				firstseen: firstseen,
-				transactioncount: transactioncount,
-				currentblocknumber: currentblocknumber,
-				new_blocks_seen: new_blocks_seen
-				};
-	
-	return json;
-};
-
-function getAccountsJsonArray(accounts) {
-	var jsonarray = [];
-	
-	if (accounts !== false) { 
-		
-		for (var i = 0, len = accounts.length; i < len; i++) {
-			var account = accounts[i];
-			var accjson = getAccountJson(account);
-			jsonarray.push(accjson);
-		}
-		
-		  
-	  } else {
-		  jsonarray = false;
-	  }
-	
-	return jsonarray;
-}
-
-
-
-exports.account = function(req, res) {
-	var accountaddr = req.params.id;
-	
-	var account = Account.getAccount(accountaddr);
-	
-	var json = getAccountJson(account);
-	
-	var jsonresult = {status: 1
-			, data: [json]};
-	
-	global.log('/account json result is ' + JSON.stringify(jsonresult));
-	
-	res.json(jsonresult);
-};
-
-exports.accounts = function(req, res) {
-	var accountaddressesstring = req.params.ids;
-	var accountaddresses = accountaddressesstring.split(',');
-	
-	var accounts = Account.getAccounts(accountaddresses);
-	
-	var jsonarray = getAccountsJsonArray(accounts);
-	
-	var jsonresult = {status: 1
-			, data: jsonarray};
-	
-	global.log('/account/multiple json result is ' + JSON.stringify(jsonresult));
-	
-	res.json(jsonresult);
-};
-
-// source
-exports.account_source = function(req, res) {
-	var accountaddr = req.params.id;
-	
-	global.log("account_source called for " + accountaddr );
-
-	var account = Account.getAccount(accountaddr);
-	
-	  var error = 'not implemented yet';
-	  var jsonresult = {status: 0
-			  , error: error};
-
-	  res.json(jsonresult);
-};
-
-// account mining
-exports.account_mined = function(req, res) {
-	var accountaddr = req.params.id;
-	var bforcefullsearch = (req.params.full && (req.params.full == "full") ? true : false);
-	
-	var account = Account.getAccount(accountaddr);
-
-	// we get list of blocks within max_processed_blocks if bforcefullsearch = false
-	var blocks = account.getMinedBlocks(bforcefullsearch);
-	
-	if (blocks !== undefined) {
-		var jsonarray = [];
-		
-		for (var i = 0, len = blocks.length; i < len; i++) {
-			var block = blocks[i];
-			var blocknumber = block.getBlockNumber();
-			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
-			jsonarray.push({number: blocknumber, time: blocktime});
-		}
-		
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get latest mined blocks';
-		  var jsonresult = {status: 0
-				  , error: error};
-	
-		  res.json(jsonresult);
-	  }
-};
-
-exports.account_mined_full = function(req, res) {
-	req.params.full = "full";
-	
-	return exports.account_mined(req, res);
-}
-
-
-exports.account_mined_today = function(req, res) {
-	// returned the numbers of blocks mined for current day from an account
-	var accountaddr = req.params.id;
-	
-	var account = Account.getAccount(accountaddr);
-
-	var blocks = account.getMinedBlocksToday();
-	
-	if (blocks !== undefined) {
-		var jsonarray = [];
-		
-		for (var i = 0, len = blocks.length; i < len; i++) {
-			var block = blocks[i];
-			var blocknumber = block.getBlockNumber();
-			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
-			jsonarray.push({number: blocknumber, time: blocktime});
-		}
-		
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-	} else {
-		  var error = 'could not get today\'s blocks';
-		  var jsonresult = {status: 0
-				  , error: error};
-	
-		  res.json(jsonresult);
-	  }
-	
-};
-
-exports.account_mininghistory = function(req, res) {
-	// returned the numbers of blocks mined for current day from an account
-	var accountaddr = req.params.id;
-	
-	var account = Account.getAccount(accountaddr);
-	
-	var ndays = 60;
-
-	var blocks = account.getMinedBlocksPastDays(ndays);
-	
-	if (blocks !== undefined) {
-		var jsonarray = [];
-		
-		// we initialize a map with the last month days
-		var zero_am_timestamp = global.getZeroAMTimeStamp();
-		
-		var historyarray = [];
-		var timestamp = zero_am_timestamp;
-		
-		for (i = 0; i < ndays + 1; i++) {
-			historyarray[i] = new Object();
-			historyarray[i].time = timestamp;
-			historyarray[i].count = 0;
-			
-			timestamp -= 24*60*60*1000;
-		}
-		
-		// we count the blocks mined each day
-		for (var i = 0, len = blocks.length; i < len; i++) {
-			global.log("i is " + i);
-			var block = blocks[i];
-			var blocknumber = block.getBlockNumber();
-			var blocktime = block.getUnixBlockTimeStamp();
-			var index = Math.trunc(((blocktime - zero_am_timestamp) > 0 ? blocktime - zero_am_timestamp : (zero_am_timestamp - blocktime) + 1) / (24*60*60*1000));
-			global.log("index is " + index);
-				
-			historyarray[index].count = historyarray[index].count + 1;
-		}
-		
-		// build the json array
-		for (var i = 0, len = historyarray.length; i < len; i++) {
-			var day = new Date(historyarray[i].time).toISOString();
-			var count = historyarray[i].count;
-			jsonarray.push({day: day, minedBlocks: count});
-		}
-		
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-	} else {
-		  var error = 'could not get history blocks';
-		  var jsonresult = {status: 0
-				  , error: error};
-	
-		  res.json(jsonresult);
-	  }
-	
-};
-
-exports.account_miningunclehistory = function(req, res) {
-	var accountaddr = req.params.id;
-	
-	  var error = 'not implemented yet';
-	  var jsonresult = {status: 0
-			  , error: error};
-
-	  res.json(jsonresult);
-	
-};
-
-// account transactions
-exports.account_txs = function(req, res) {
-	var accountaddr = req.params.id;
-	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
-	
-	global.log("account_tx called for " + accountaddr + " and offset " + offset);
-
-	var account = Account.getAccount(accountaddr);
-	
-	// we return a maximum of max_returned_transactions transactions
-
-	var transactions = account.getTransactionsFrom(offset);
-	var jsonarray = getTransactionsJsonArray(transactions);
-	
-	if (jsonarray !== false) { 
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get any transaction';
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-};
-
-exports.account_txs_in_blocks = function(req, res) {
-	var accountaddr = req.params.id;
-	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 0);
-	var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
-	var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : null);
-	
-	global.log("account_txs_in_blocks called for " + accountaddr + " and offset " + offset + " from block " + fromBlock + " to block " + toBlock);
-
-	var account = Account.getAccount(accountaddr);
-	
-	// we return a maximum of max_returned_transactions transactions
-
-	var transactions = account.getTransactionsWithin(offset, fromBlock, toBlock);
-	var jsonarray = getTransactionsJsonArray(transactions);
-	
-	if (jsonarray !== false) { 
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get any transaction';
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-};
-
-exports.account_txs_before_block = function(req, res) {
-	var accountaddr = req.params.id;
-	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
-	
-	global.log("account_txs_before_block called for " + accountaddr + " and blockid " + blockid);
-
-	var account = Account.getAccount(accountaddr);
-	
-	// we return a maximum of max_returned_transactions transactions
-
-	var transactions;
-	
-	if (blockid != -1)
-		transactions = account.getTransactionsBefore(blockid);
-	else
-		transactions = account.getTransactions(offset, fromBlock, toBlock);
-		
-	var jsonarray = getTransactionsJsonArray(transactions);
-	
-	if (jsonarray !== false) { 
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get any transaction';
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-};
-
-exports.account_txs_after_block = function(req, res) {
-	var accountaddr = req.params.id;
-	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
-	
-	global.log("account_txs_after_block called for " + accountaddr + " and blockid " + blockid);
-
-	var account = Account.getAccount(accountaddr);
-	
-	// we return a maximum of max_returned_transactions transactions
-
-	var transactions;
-	
-	if (blockid != -1)
-		transactions = account.getTransactionsAfter(blockid);
-	else
-		transactions = account.getTransactions(offset, fromBlock, toBlock);
-		
-	var jsonarray = getTransactionsJsonArray(transactions);
-	
-	if (jsonarray !== false) { 
-		var jsonresult = {status: 1
-				  , data: jsonarray};
-	       	
-		res.json(jsonresult);
-		  
-	  } else {
-		  var error = 'could not get any transaction';
-		  var jsonresult = {status: 0
-				  , error: error};
-
-		  res.json(jsonresult);
-	  }
-};
-
-
 // blocks Routes
-var Block = require('../../lib/includes/block.js');
-
 
 function getBlockJson(block) {
 	
@@ -768,7 +412,7 @@ exports.block_transactions = function(req, res) {
 	var blockId = req.params.id;
 	var block = Block.getBlock(blockId);
 	
-	var transactions = block.getTransactions();
+	var transactions = Transaction.getBlockTransactions(block);
 	var jsonarray = getTransactionsJsonArray(transactions);
 	
 	if (jsonarray !== false) { 
@@ -788,7 +432,6 @@ exports.block_transactions = function(req, res) {
 
 
 // tx Routes
-var Transaction = require('../../lib/includes/transaction.js');
 
 exports.transaction = function(req, res) {
 	var txahash = req.params.id;
@@ -929,4 +572,382 @@ exports.transactions = function(req, res) {
 		  res.json(jsonresult);
 	  }
 };
+
+
+//account Routes
+
+function getAccountJson(account) {
+	
+	var accountaddr = account.getAddress();
+	var balance = account.getBalance();
+	var nonce = account.getNonce();
+	var code = account.getCode();
+	var name = account.getName();
+	var storage = account.getStorage();
+	var firstseen = new Date(account.getUnixFirstSeenTimeStamp()).toISOString();
+	var transactioncount = account.getTransactionCount();
+	var currentblocknumber = account.currentblocknumber;
+	var new_blocks_seen = account.newblocksseen;
+	
+	var json = {address: accountaddr,
+				balance: balance,
+				nonce: nonce,
+				code: code,
+				name: name,
+				storage: storage,
+				firstseen: firstseen,
+				transactioncount: transactioncount,
+				currentblocknumber: currentblocknumber,
+				new_blocks_seen: new_blocks_seen
+				};
+	
+	return json;
+};
+
+function getAccountsJsonArray(accounts) {
+	var jsonarray = [];
+	
+	if (accounts !== false) { 
+		
+		for (var i = 0, len = accounts.length; i < len; i++) {
+			var account = accounts[i];
+			var accjson = getAccountJson(account);
+			jsonarray.push(accjson);
+		}
+		
+		  
+	  } else {
+		  jsonarray = false;
+	  }
+	
+	return jsonarray;
+}
+
+
+
+exports.account = function(req, res) {
+	var accountaddr = req.params.id;
+	
+	var account = Account.getAccount(accountaddr);
+	
+	var json = getAccountJson(account);
+	
+	var jsonresult = {status: 1
+			, data: [json]};
+	
+	global.log('/account json result is ' + JSON.stringify(jsonresult));
+	
+	res.json(jsonresult);
+};
+
+exports.accounts = function(req, res) {
+	var accountaddressesstring = req.params.ids;
+	var accountaddresses = accountaddressesstring.split(',');
+	
+	var accounts = Account.getAccounts(accountaddresses);
+	
+	var jsonarray = getAccountsJsonArray(accounts);
+	
+	var jsonresult = {status: 1
+			, data: jsonarray};
+	
+	global.log('/account/multiple json result is ' + JSON.stringify(jsonresult));
+	
+	res.json(jsonresult);
+};
+
+//source
+exports.account_source = function(req, res) {
+	var accountaddr = req.params.id;
+	
+	global.log("account_source called for " + accountaddr );
+
+	var account = Account.getAccount(accountaddr);
+	
+	  var error = 'not implemented yet';
+	  var jsonresult = {status: 0
+			  , error: error};
+
+	  res.json(jsonresult);
+};
+
+//account mining
+exports.account_mined = function(req, res) {
+	var accountaddr = req.params.id;
+	var bforcefullsearch = (req.params.full && (req.params.full == "full") ? true : false);
+	
+	var account = Account.getAccount(accountaddr);
+
+	// we get list of blocks within max_processed_blocks if bforcefullsearch = false
+	var blocks = account.getMinedBlocks(bforcefullsearch);
+	
+	if (blocks !== undefined) {
+		var jsonarray = [];
+		
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
+			jsonarray.push({number: blocknumber, time: blocktime});
+		}
+		
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get latest mined blocks';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
+};
+
+exports.account_mined_full = function(req, res) {
+	req.params.full = "full";
+	
+	return exports.account_mined(req, res);
+}
+
+
+exports.account_mined_today = function(req, res) {
+	// returned the numbers of blocks mined for current day from an account
+	var accountaddr = req.params.id;
+	
+	var account = Account.getAccount(accountaddr);
+
+	var blocks = account.getMinedBlocksToday();
+	
+	if (blocks !== undefined) {
+		var jsonarray = [];
+		
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = new Date(block.getUnixBlockTimeStamp()).toISOString();
+			jsonarray.push({number: blocknumber, time: blocktime});
+		}
+		
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+	} else {
+		  var error = 'could not get today\'s blocks';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
+	
+};
+
+exports.account_mininghistory = function(req, res) {
+	// returned the numbers of blocks mined for current day from an account
+	var accountaddr = req.params.id;
+	
+	var account = Account.getAccount(accountaddr);
+	
+	var ndays = 60;
+
+	var blocks = account.getMinedBlocksPastDays(ndays);
+	
+	if (blocks !== undefined) {
+		var jsonarray = [];
+		
+		// we initialize a map with the last month days
+		var zero_am_timestamp = global.getZeroAMTimeStamp();
+		
+		var historyarray = [];
+		var timestamp = zero_am_timestamp;
+		
+		for (i = 0; i < ndays + 1; i++) {
+			historyarray[i] = new Object();
+			historyarray[i].time = timestamp;
+			historyarray[i].count = 0;
+			
+			timestamp -= 24*60*60*1000;
+		}
+		
+		// we count the blocks mined each day
+		for (var i = 0, len = blocks.length; i < len; i++) {
+			global.log("i is " + i);
+			var block = blocks[i];
+			var blocknumber = block.getBlockNumber();
+			var blocktime = block.getUnixBlockTimeStamp();
+			var index = Math.trunc(((blocktime - zero_am_timestamp) > 0 ? blocktime - zero_am_timestamp : (zero_am_timestamp - blocktime) + 1) / (24*60*60*1000));
+			global.log("index is " + index);
+				
+			historyarray[index].count = historyarray[index].count + 1;
+		}
+		
+		// build the json array
+		for (var i = 0, len = historyarray.length; i < len; i++) {
+			var day = new Date(historyarray[i].time).toISOString();
+			var count = historyarray[i].count;
+			jsonarray.push({day: day, minedBlocks: count});
+		}
+		
+		var jsonresult = {status: 1
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+	} else {
+		  var error = 'could not get history blocks';
+		  var jsonresult = {status: 0
+				  , error: error};
+	
+		  res.json(jsonresult);
+	  }
+	
+};
+
+exports.account_miningunclehistory = function(req, res) {
+	var accountaddr = req.params.id;
+	
+	  var error = 'not implemented yet';
+	  var jsonresult = {status: 0
+			  , error: error};
+
+	  res.json(jsonresult);
+	
+};
+
+//account transactions
+exports.account_txs = function(req, res) {
+	var accountaddr = req.params.id;
+	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
+	
+	global.log("account_tx called for " + accountaddr + " and offset " + offset);
+
+	// we return a maximum of max_returned_transactions transactions
+	
+	var blockscan = Utility.getBlockScanObject();
+
+	var transactions = Account.getTransactionsFrom(accountaddr, offset, blockscan);
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , highestblock: blockscan.getHighestBlockSearched()
+				  , lowestblock: blockscan.getLowestBlockSearched()
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+exports.account_txs_in_blocks = function(req, res) {
+	var accountaddr = req.params.id;
+	var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 0);
+	var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
+	var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : null);
+	
+	global.log("account_txs_in_blocks called for " + accountaddr + " and offset " + offset + " from block " + fromBlock + " to block " + toBlock);
+
+	// we return a maximum of max_returned_transactions transactions
+
+	var blockscan = Utility.getBlockScanObject();
+
+	var transactions = Account.getTransactionsWithin(accountaddr, offset, fromBlock, toBlock, blockscan);
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , highestblock: blockscan.getHighestBlockSearched()
+				  , lowestblock: blockscan.getLowestBlockSearched()
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+exports.account_txs_before_block = function(req, res) {
+	var accountaddr = req.params.id;
+	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
+	
+	global.log("account_txs_before_block called for " + accountaddr + " and blockid " + blockid);
+
+	// we return a maximum of max_returned_transactions transactions
+
+	var blockscan = Utility.getBlockScanObject();
+
+	var transactions;
+	
+	if (blockid != -1)
+		transactions = Account.getTransactionsBefore(accountaddr, blockid, blockscan);
+	else
+		transactions = Account.getTransactions(accountaddr, offset, fromBlock, toBlock, blockscan);
+		
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , highestblock: blockscan.getHighestBlockSearched()
+				  , lowestblock: blockscan.getLowestBlockSearched()
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
+exports.account_txs_after_block = function(req, res) {
+	var accountaddr = req.params.id;
+	var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
+	
+	global.log("account_txs_after_block called for " + accountaddr + " and blockid " + blockid);
+
+	// we return a maximum of max_returned_transactions transactions
+
+	var blockscan = Utility.getBlockScanObject();
+
+	var transactions;
+	
+	if (blockid != -1)
+		transactions = Account.getTransactionsAfter(accountaddr, blockid, blockscan);
+	else
+		transactions = Account.getTransactions(accountaddr, offset, fromBlock, toBlock, blockscan);
+		
+	var jsonarray = getTransactionsJsonArray(transactions);
+	
+	if (jsonarray !== false) { 
+		var jsonresult = {status: 1
+				  , highestblock: blockscan.getHighestBlockSearched()
+				  , lowestblock: blockscan.getLowestBlockSearched()
+				  , data: jsonarray};
+	       	
+		res.json(jsonresult);
+		  
+	  } else {
+		  var error = 'could not get any transaction';
+		  var jsonresult = {status: 0
+				  , error: error};
+
+		  res.json(jsonresult);
+	  }
+};
+
 

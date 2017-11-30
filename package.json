@@ -6,16 +6,17 @@
   "dependencies": {
     "deasync": "^0.1.10",
     "express": "^4.16.2",
-    "express-rate-limit": "^2.9.0",    
+    "express-rate-limit": "^2.9.0",
     "forever": "^0.15.3",
     "web3": "^1.0.0-beta.22"
-   },
+  },
   "devDependencies": {
     "nodemon": "^1.12.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-	"start": "nodemon ./lib/server.js"
+    "start": "forever ./lib/server.js",
+    "startdev": "nodemon ./lib/server.js"
   },
   "author": "",
   "license": "ISC"
