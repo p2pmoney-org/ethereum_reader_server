@@ -68,7 +68,7 @@ module.exports = function(app) {
   app.route(route_root_path + '/tx/:id')
   .get(Controller.transaction);
 
-  app.route(route_root_path + '/txs/count/:id')
+  app.route(route_root_path + '/txs/count/:id') // to be compatible with etherchain.org
   .get(Controller.transactions_count);
 
   app.route(route_root_path + '/txs/:offset/:count')
