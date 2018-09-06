@@ -1,9 +1,9 @@
 'use strict';
 
-var Global = require('../../lib/includes/global.js');
+var Global = require('../service.js');
 
 var global = Global.getGlobalInstance();
-var web3 = global.getWeb3Provider();
+var web3 = global.getWeb3Instance();
 
 var Utility = require('./utility.js');
 var EthNode = require('./ethnode.js');
@@ -331,8 +331,8 @@ class Transaction {
 		var transactions = [];
 	    
 	    // we read backward the last blocks 
-		// until we have off + cnt transactions 
 		// and take the first cnt transactions
+		// (forward filling)
 		var latestBlock = Block.getLatestBlock();
 		var lastblocknumber = latestBlock.getNumber();
 		
@@ -359,6 +359,7 @@ class Transaction {
 		
 		// take from off - 1 to off - count in reverse order again
 		for (var i = (off -1) ; i >= (off - cnt); i--) {
+			if (transactions[i])
 			txs.push(transactions[i]);
 		}			
 		

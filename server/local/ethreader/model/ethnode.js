@@ -1,9 +1,9 @@
 'use strict';
 
-var Global = require('../../lib/includes/global.js');
+var Global = require('../service.js');
 
 var global = Global.getGlobalInstance();
-var web3 = global.getWeb3Provider();
+var web3 = global.getWeb3Instance();
 
 var GlobalEthNode = null;
 
@@ -18,6 +18,11 @@ class EthereumNode {
 		GlobalEthNode = new EthereumNode();
 		
 		return GlobalEthNode;
+	}
+
+	static getNodeCurrentBlockNumber() {
+		var ethnode = EthereumNode.getEthNode();
+		return ethnode.getCurrentBlockNumber();
 	}
 	
 	// non static
@@ -328,7 +333,6 @@ class EthereumNode {
 
 		return transactiondata;
 	}
-	
 	
 }
 

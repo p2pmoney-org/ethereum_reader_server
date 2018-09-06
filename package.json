@@ -1,9 +1,10 @@
 {
-  "name": "ethereum-reader-js",
+  "name": "ethereum_reader_server",
   "version": "1.0.0",
   "description": "REST API to access in read-only mode an ethereum RPC server",
   "main": "index.js",
   "dependencies": {
+    "body-parser": "^1.18.2",
     "deasync": "^0.1.10",
     "express": "^4.16.2",
     "express-rate-limit": "^2.9.0",
@@ -15,9 +16,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "forever ./lib/server.js",
-    "startdev": "nodemon ./lib/server.js"
+    "start": "forever ./server/server.js",
+    "startdev": "nodemon ./server/server.js"
   },
-  "author": "",
+  "author": "p2pmoney.org",
   "license": "ISC"
 }

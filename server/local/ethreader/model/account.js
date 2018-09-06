@@ -1,9 +1,9 @@
 'use strict';
 
-var Global = require('../../lib/includes/global.js');
+var Global = require('../service.js');
 
 var global = Global.getGlobalInstance();
-var web3 = global.getWeb3Provider();
+var web3 = global.getWeb3Instance();
 
 // reader objects
 var EthNode = require('./ethnode.js');
@@ -154,6 +154,15 @@ class Account {
 		{require('deasync').runLoopOnce();}
 
 		return this.code;
+	}
+	
+	isContract() {
+		var code = this.getCode();
+		
+		if (code)
+			return true;
+		else
+			return false;
 	}
 	
 	getName() {
@@ -464,10 +473,19 @@ class Account {
 		return Account.getTransactionsForAccount(accountaddress,  offset, fromBlock, toBlock, blockscan);
 	}
 	
+	static getLastTransactions(accountaddress, offset, count, blockscan) {
+		var lastblocknumber = Block.getLastBlockNumber();
+		
+		var toBlock = lastblocknumber;
+		var fromBlock = (((lastblocknumber - global.max_processed_blocks) > 0) ? (lastblocknumber - global.max_processed_blocks) : 0);
+		
+		return Account.getLastTransactionsForAccountInBlockRange(accountaddress,  offset, count, fromBlock, toBlock, blockscan);
+	}
+	
 	static getTransactionsBefore(accountaddress, blocknumber, blockscan) {
 		var lastblocknumber = Block.getLastBlockNumber();
 		
-		var offset = 0;
+		var offset = global.max_processed_transactions;
 		var toBlock = (blocknumber > 0 ? blocknumber - 1 : 0);
 		var fromBlock = (((toBlock - global.max_processed_blocks) > 0) ? (toBlock - global.max_processed_blocks) : 0);
 		
@@ -477,18 +495,24 @@ class Account {
 	static getTransactionsAfter(accountaddress, blocknumber, blockscan) {
 		var lastblocknumber = Block.getLastBlockNumber();
 		
-		var offset = 0;
+		var offset = global.max_processed_transactions;
 		var fromBlock = (blocknumber + 1 < lastblocknumber ? blocknumber + 1 : lastblocknumber);
 		var toBlock = (((fromBlock + global.max_processed_blocks) < lastblocknumber) ? (fromBlock + global.max_processed_blocks) : lastblocknumber);
 		
 		return Account.getTransactionsForAccount(accountaddress,  offset, fromBlock, toBlock, blockscan);
 	}
 	
-	static getTransactionsWithin(accountaddress, offset, fromBlock, toBlock, blockscan) {
+	static getTransactionsWithin(accountaddress, fromBlock, toBlock, blockscan) {
+		var offset = global.max_processed_transactions;
+
 		return Account.getTransactionsForAccount(accountaddress,  offset, fromBlock, toBlock, blockscan);
 	}
 	
 	static getTransactionsForAccount(accountaddress, offset, fromBlock, toBlock, blockscan) {
+		return Account.getLastTransactionsForAccountInBlockRange(accountaddress, offset, global.max_processed_transactions, fromBlock, toBlock, blockscan);
+	}
+	
+	static getLastTransactionsForAccountInBlockRange(accountaddress, offset, count, fromBlock, toBlock, blockscan) {
 		var transactions = [];
 	    
 		// we return a maximum of max_returned_transactions transactions
@@ -503,8 +527,11 @@ class Account {
 		var startblocknum = (fromBlock > 0 ? fromBlock : 0);
 		startblocknum = (((lastblocknum - startblocknum) < global.max_processed_blocks) ? startblocknum : (lastblocknum - global.max_processed_blocks));
 	
-		global.log("startblock is " + startblocknum + " endblock is " + lastblocknum);
+		global.log("offset is " + offset + " count is " + count + " startblock is " + startblocknum + " endblock is " + lastblocknum);
 		
+	    // we read backward the blocks 
+		// and take the first cnt transactions
+		// (forward filling)
 		for (i = lastblocknum; i >= startblocknum; i--) {
 			// going backward in time
 			var block = Block.getBlock(i);
@@ -529,22 +556,17 @@ class Account {
 		// and take the offset and limit to count if necessary
 		var off = (offset > 0 ? offset : 0);
 		off = (off < transactions.length ? off : transactions.length);
-		var cnt = ( transactions.length - off > 0 ? transactions.length - off : 0)
-		cnt = (cnt < global.max_returned_transactions ? cnt : global.max_returned_transactions);
+		var cnt = (count < global.max_processed_transactions ? count : global.max_processed_transactions);
+		cnt = (cnt <= off ? cnt : off);
 
 		var txs = [];
 		
-		if (off > 0) {
-			// take count if offset
-			for (var i = off; i < off + cnt; i++) {
-				txs.push(transactions[i]);
-			}			
-			
-		}
-		else {
-			// or the array if no offset
-			txs = transactions;
-		}
+		// take from off - 1 to off - count in reverse order again
+		for (var i = (off -1) ; i >= (off - cnt); i--) {
+			if (transactions[i])
+			txs.push(transactions[i]);
+		}			
+		
 		
 		//TODO: we could push the transaction in an account object
 		// if one exists in the AccountMap for this address
@@ -569,7 +591,7 @@ class Account {
 				return mapvalue;
 			}
 			else {
-				global.log("account " + account.address + " considedred obsolete and removed from map");
+				global.log("account " + account.address + " considered obsolete and removed from map");
 				accountmap.removeAccount(account);
 			}
 		}

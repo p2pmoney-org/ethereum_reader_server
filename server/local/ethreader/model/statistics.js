@@ -1,9 +1,9 @@
 'use strict';
 
-var Global = require('../../lib/includes/global.js');
+var Global = require('../service.js');
 
 var global = Global.getGlobalInstance();
-var web3 = global.getWeb3Provider();
+var web3 = global.getWeb3Instance();
 
 var EthNode = require('./ethnode.js');
 var Block = require('./block.js');
