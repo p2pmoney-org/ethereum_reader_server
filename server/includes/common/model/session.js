@@ -229,6 +229,21 @@ class Session {
 		}
 	}
 	
+	getSessionVariables() {
+		var array = [];
+		
+		for (var key in this.sessionvar) {
+		    if (!this.sessionvar[key]) continue;
+		    
+		    var entry = {};
+		    entry.key = key;
+		    entry.value = this.sessionvar[key];
+		    array.push(entry);
+		}
+		
+		return array;
+	}
+	
 	
 	// ientification and authentication
 	isAnonymous() {
