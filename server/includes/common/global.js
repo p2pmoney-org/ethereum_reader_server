@@ -290,6 +290,15 @@ class Global {
 		return array;
 	}
 	
+	_processedvalue(value) {
+		var objectConstructor = {}.constructor;
+		
+		if (value && value.constructor === objectConstructor)
+			return JSON.stringify(value);
+		else
+			return value.toString();
+	}
+	
 	processText(text) {
 		var config = this.config;
 		
@@ -297,7 +306,7 @@ class Global {
 	    var regex = new RegExp(':(' + Object.keys(config).join('|') + ')', 'g');
 
 	    // Replace the string by the value in object
-	    return text.replace(regex, (m, $1) => config[$1] || m);
+	    return text.replace(regex, (m, $1) => this._processedvalue(config[$1]) || m);
 	}
 	
 	_checkFileExist(fs, filepath) {
