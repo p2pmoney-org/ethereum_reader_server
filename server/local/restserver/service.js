@@ -80,8 +80,11 @@ class Service {
 
 		app.use(BodyParser.urlencoded({ extended: true }));
 		app.use(BodyParser.json());
+		
+		
 		//
-		// routes
+		// routes for REST APIs
+		//
 
 		// load routes
 		global.log("Loading routes")

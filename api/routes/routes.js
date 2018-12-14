@@ -18,6 +18,8 @@ module.exports = function(app, global) {
 	.get(Controller.version);
 	app.route(route_root_path + '/version')
 	.get(Controller.version);
+	app.route(route_root_path + '/version/support')
+	.get(Controller.version_support);
 
 	var localroot = '../../server/local';
 	

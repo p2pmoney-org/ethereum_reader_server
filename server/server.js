@@ -3,6 +3,7 @@
  */
 'use strict';
 
+
 //setting environment variables
 var process = require('process');
 
@@ -31,6 +32,24 @@ if (process.env.ETHEREUM_WEBAPP_EXEC_DIR) {
 // instantiating global object
 var global = Global.getGlobalInstance();
 
+// force logging
+/*global.releaseConsoleLog();
+global.enable_log = 1;
+global.execution_env = 'dev';
+
+
+if (global.execution_env) {
+	// DEBUG
+	//Error.stackTraceLimit = Infinity;
+	// DEBUG
+}*/
+
+global.current_version = "0.1.0";
+global.version_support = ["0.0.1", "0.1.0"];
+
+
+
+
 global.log("*********");
 global.log("Starting server: " + global.service_name);
 
@@ -38,6 +57,7 @@ global.log("");
 global.log("Base directory: " + global.base_dir);
 global.log("Execution directory: " + global.execution_dir);
 global.log("Configuration file: " + global.config_path);
+global.log("Execution environment: " + global.execution_env);
 global.log("*********");
 global.log("");
 global.log("****Server initialization*****");
@@ -118,4 +138,5 @@ var app = global.getServiceInstance('restserver').startRestServer();
 // middle-ware
 global.getServiceInstance('restserver').startMiddleware();
 
+global.log("*********");
 

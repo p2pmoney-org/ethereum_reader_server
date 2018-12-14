@@ -94,15 +94,40 @@ class Service {
 		return new this.EthereumNode(session);
 	}
 	
-	// TODO: bad naming, to be renamed
-	getWeb3Provider() {
-		return this.global.getWeb3Provider();
-	}
-	
+	// web3
 	getWeb3Instance() {
-		return this.global.getWeb3Instance();
+		var global = this.global;
+		
+		if (this.web3instance)
+			return this.web3instance;
+		
+		var Web3 = global.require('web3');
+
+		var web3Provider = this.getWeb3Provider();
+		
+		this.web3instance = new Web3(web3Provider);		
+		
+		this.log("ethereum reader web3 instance created");
+		
+		return this.web3instance;
 	}
 	
+	getWeb3Provider() {
+		var global = this.global;
+		
+		var Web3 = global.require('web3');
+
+		var web3providerfullurl = global.getWeb3ProviderFullUrl();
+		
+		var web3Provider =   new Web3.providers.HttpProvider(web3providerfullurl);
+		
+		
+		return web3Provider;
+	}
+	
+	
+	
+	// utils
 	log(string) {
 		return this.global.log(string);
 	}

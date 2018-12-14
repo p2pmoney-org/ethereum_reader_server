@@ -58,6 +58,7 @@ class MySqlConnection {
 
 			this.connection = mysql.createConnection({
 			  host: host,
+			  port: port,
 			  database: database,
 			  user: user,
 			  password: password
@@ -116,18 +117,22 @@ class MySqlConnection {
 	open() {
 		if (this.opencount > 0) {
 			this.opencount++;
+			console.log('incrementing connection to mysql server ' + this.opencount);
 			return;
 		}
 		
+		console.log('opening connection to mysql server');
 		this._connect();
 		this.opencount = 1;
 	}
 	
 	close() {
 		this.opencount--;
+		console.log('decrementing connection to mysql server ' + this.opencount);
 		
 		if (this.opencount <= 0) {
 			if (this.connection) {
+				console.log('ending connection to mysql server');
 				this.connection.end();
 				this.connection = null;
 				this.connectionactive = false;

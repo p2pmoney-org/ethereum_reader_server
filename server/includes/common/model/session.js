@@ -34,7 +34,7 @@ class SessionMap {
 		}
 	}
 	
-	pushSession(session) {
+	pushSession(session, bfastpush = false) {
 		this.garbage();
 
 		var key = session.session_uuid.toString().toLowerCase();
@@ -43,6 +43,9 @@ class SessionMap {
 		global.log('Pushing session in map: ' + key);
 
 		this.map[key] = session;
+		
+		if (bfastpush === true)
+			return;
 		
 		// should put session in map before saving
 		// to avoid re-entrance when mysql's async
@@ -107,6 +110,11 @@ class Session {
 		this.creation_date = Date.now();
 		this.last_ping_date = Date.now();
 		
+		// initialization
+		this.isready = false;
+		this.initializationpromises = [];
+
+		// authentication
 		this.isauthenticated = false;
 		
 		// object map
@@ -170,9 +178,13 @@ class Session {
 			this.isauthenticated = array['isauthenticated'];
 		
 		if (array['sessionvariables'] !== undefined) {
-			var jsonstring = array['sessionvariables'].toString('utf8');
-			this.sessionvar = JSON.parse(jsonstring);
-			
+			try {
+				var jsonstring = array['sessionvariables'].toString('utf8');
+				this.sessionvar = JSON.parse(jsonstring);
+			}
+			catch(e) {
+				
+			}
 		}
 		
 		//this.global.log('read sessionvar is ' + JSON.stringify(this.sessionvar));
@@ -247,14 +259,64 @@ class Session {
 	
 	// ientification and authentication
 	isAnonymous() {
+		var global = this.global;
+		
+		// invoke hooks to let services interact with the session object
+		var orguseruuid = this.useruuid;
+			
+		var result = [];
+		
+		var params = [];
+		
+		params.push(this);
+
+		var ret = global.invokeHooks('isSessionAnonymous_hook', result, params);
+		
+		if (ret && result && result.length) {
+			global.log('isSessionAnonymous_hook result is ' + JSON.stringify(result));
+		}
+		
+		var newuseruuid = this.useruuid;
+		
+		if (orguseruuid != newuseruuid) {
+			// a hook changed the useruuid
+			this.save();
+		}
+
+		// current check
 		var user = this.getUser();
 		return (user === null);
 	}
 	
 	isAuthenticated() {
+		var global = this.global;
+		
 		if (this.isAnonymous())
 			return false;
 		
+		// invoke hooks to let services interact with the session object
+		var orgisauthenticated = this.isauthenticated;
+		
+		var result = [];
+		
+		var params = [];
+		
+		params.push(this);
+
+		var ret = global.invokeHooks('isSessionAuthenticated_hook', result, params);
+		
+		if (ret && result && result.length) {
+			global.log('isSessionAuthenticated_hook result is ' + JSON.stringify(result));
+		}
+		
+		var newisauthenticated  = this.useruuid;
+		
+		if (orgisauthenticated != newisauthenticated) {
+			// a hook changed the authentication flag
+			this.save();
+		}
+
+		// current check
 		var now = Date.now();
 		
 		if ((now - this.last_ping_date) < 2*60*60*1000) {
@@ -325,6 +387,24 @@ class Session {
 		return this.user;
 	}
 	
+	getUserUUID() {
+		return this.useruuid;
+	}
+	
+	// mysql calls
+	getMySqlConnection() {
+		var global = this.global;
+		
+		return global.getMySqlConnection();
+	}
+	
+	// rest calls
+	getRestConnection(rest_server_url, rest_server_api_path) {
+		var RestConnection = require('./restconnection.js');
+		
+		return new RestConnection(this, rest_server_url, rest_server_api_path);
+	}
+	
 	// privileges
 	hasSuperAdminPrivileges() {
 		if (this.isAnonymous())
@@ -379,6 +459,78 @@ class Session {
 		return array;
 	}
 	
+	pushFinalInitializationPromise(promise) {
+		if (promise) {
+			if (this.isready)
+				throw "session initialization has finished, it's no longer possible to push promises at this stage";
+			
+			this.initializationpromises.push(promise);
+		}
+	}
+	
+	static _waitSessionReady(session, delay, callback) {
+		
+		if (typeof session.waitsince === "undefined")
+			session.waitsince = Date.now(); // first time of a re-entrant call
+		
+		var waitedfor = Date.now() - session.waitsince;
+		var sessionuuid = session.getSessionUUID();
+		
+		if (waitedfor > (200*delay)) {
+			console.log('session initialization started long ago: ' + waitedfor);
+			
+			if (callback)
+				callback('too long', false);
+			
+			return Promise.resolve(false);
+		}
+		
+		if (session.initializationpromises) {
+			console.log('creating a gofree promise after session initialization for session ' + sessionuuid);
+			
+			var gofreepromise = new Promise(function (resolve, reject) {
+				resolve(true);
+				
+				return true;
+			})
+			.then(function (res) {
+				console.log('waiting for session initialization returned: ' + sessionuuid);
+				
+				if (callback)
+					callback(null, res);
+			})
+			.catch(function (err) {
+				console.log("error waiting for session initialization for session " + sessionuuid + " : " + err);
+				
+				if (callback)
+					callback(err, false);
+			});
+			
+			session.initializationpromises.push(gofreepromise);
+		}
+		else {
+			console.log('no initialization promise array for session ' + sessionuuid);
+			
+			if (callback)
+				callback('no initialization promise array for session ' + sessionuuid, false);
+		}
+		
+		/*if (typeof session.waitloopnum === "undefined")
+			session.waitloopnum = 0;
+		else
+			session.waitloopnum++;
+		
+		console.log('session ready wait loop number ' + session.waitloopnum + ' for session ' + session.getSessionUUID());
+
+		if (!session.isready) {
+			if (session.waitloopnum < 200)
+			setTimeout(function() {
+	        	Session._waitSessionReady(session, delay, callback);
+	        }, delay);
+			
+		}*/
+	}
+	
 	static getSession(global, sessionuuid) {
 		var session;
 		
@@ -392,6 +544,27 @@ class Session {
 		if (mapvalue !== undefined) {
 			// is already in map
 			session = mapvalue;
+			
+			if (session.isready === false) {
+				global.log('session ' + sessionuuid + ' is not ready, going into a lock');
+				
+				var finished = false;
+				
+				Session._waitSessionReady(session, 100, function(err, res) {
+					global.log('finished waiting session is ready for ' + sessionuuid);
+					finished = true;
+				});
+
+				// pseudo lock for this critical section
+				while(!finished)
+				{require('deasync').runLoopOnce();}
+				
+				if (session.isready === false)
+					global.log('session ' + sessionuuid + ' was not ready, going out of lock');
+				else
+					global.log('session ' + sessionuuid + ' is ready, going successfully out of lock');
+
+			}
 		}
 		else {
 			// create a new session object
@@ -402,15 +575,72 @@ class Session {
 			
 			// we push the object right away
 			// to avoid having persistence async operation creating a re-entry
-			sessionmap.pushSession(session);
+			sessionmap.pushSession(session, true); // fast push to avoid calls to mysql
 			
-			// check to see if it's in the persistence layer
-			var array = Session._sessionRecord(global, sessionuuid);
+			var initializationfinished = false;
 			
-			if (array && (array['uuid'])) {
-				session._init(array);
-			}
+			global.log('creating session initialization promise for session ' + sessionuuid);
+			var initializationpromise = new Promise(function (resolve, reject) {
+				try {
+					global.log('starting initialization of session object for ' + sessionuuid);
+
+					// check to see if it's in the persistence layer
+					var array = Session._sessionRecord(global, sessionuuid);
+					
+					if (array && (array['uuid'])) {
+						session._init(array);
+					}
+					
+					session.ping();
+
+					session.save();
+
+					// invoke hooks to let services interact with the new session object
+					var result = [];
+					
+					var params = [];
+					
+					params.push(session);
+
+					var ret = global.invokeHooks('createSession_hook', result, params);
+					
+					if (ret && result && result.length) {
+						global.log('createSession_hook result is ' + JSON.stringify(result));
+					}
+					
+					session.isready = true; // end of pseudo lock on session initialization
+					
+					resolve(true);
+				}
+				catch(e) {
+					var error = 'exception in session creation promise: ' + e;
+					global.log(error);
+					
+					reject(error);
+				}
+			})
+			.then(function (res) {
+				global.log('session ' + sessionuuid + ' is now ready!');
+
+				initializationfinished = true;
+			})
+			.catch(function (err) {
+				console.log("error in session initialization for sessionuuid " + sessionuuid + ": " + err);
+				
+				initializationfinished = true;
+			});
 			
+			global.log('session initialization promise created for session ' + sessionuuid);
+
+			while(!initializationfinished)
+			{require('deasync').runLoopOnce();}
+
+			global.log('number of locks waiting ' + session.initializationpromises.length);
+			
+			// releasing all locks
+			Promise.all(session.initializationpromises).then(function(res) {
+				global.log('session initialization all locks released for session ' + sessionuuid);
+			});
 		}
 		
 		return session;

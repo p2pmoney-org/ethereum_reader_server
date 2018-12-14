@@ -10,9 +10,9 @@ class EthReaderRoutes {
 		this.app = app;
 		this.global = global;
 		
-		var authkeyservice = global.getServiceInstance('ethreader');
+		var service = global.getServiceInstance('ethreader');
 		
-		authkeyservice.routes = this; // keep this referenced to stay in memory
+		service.routes = this; // keep this referenced to stay in memory
 		
 		var EthReaderControllers = require('../controllers/controllers.js');
 		
@@ -25,7 +25,7 @@ class EthReaderRoutes {
 		
 		var controllers = this.controllers;
 		
-		global.log('EthNodeRoutes.registerRoutes called')
+		global.log('EthReaderRoutes.registerRoutes called')
 		
 		var route_root_path = global.route_root_path;
 

@@ -10,6 +10,11 @@ var globalinstance;
 class Global {
 	
 	constructor() {
+		
+		// overload console.log
+		this.overrideConsoleLog();
+
+		// base and execution directories
 		var process = require('process');
 		var fs = require('fs');
 		var path = require('path');
@@ -68,9 +73,14 @@ class Global {
 		//
 		var config = this.config;
 		
+		// execution enviroment
+		this.server_env = (config && (typeof config["server_env"] != 'undefined') ? config["server_env"] : 'prod');
+		this.client_env = (config && (typeof config["client_env"] != 'undefined') ? config["client_env"] : 'prod');
+		this.execution_env = this.server_env;
+		
 		// logging
 		this.enable_log = (config && (typeof config["enable_log"] != 'undefined') ? config["enable_log"] : 1);
-		this.write_to_log_file = (config && (typeof config["write_to_log_file"] != 'undefined') ? config["write_to_log_file"] : 0);
+		this.write_to_log_file = (config && (typeof config["write_to_log_file"] != 'undefined') ? config["write_to_log_file"] : (this.execution_env != 'dev' ? 0 : 1));
 		this.can_write_to_log_file = false;
 		
 		this.logPath = (config && (typeof config["log_path"] != 'undefined') ? config["log_path"] : null);
@@ -129,7 +139,7 @@ class Global {
 		this.service_name = (config && (typeof config["service_name"] != 'undefined') ? config["service_name"] : 'ethereum_securities_webapp');
 		this.server_listening_port = (config && (typeof config["server_listening_port"] != 'undefined') ? config["server_listening_port"] : 8000);
 		this.route_root_path = (config && (typeof config["route_root_path"] != 'undefined') ? config["route_root_path"] : '/api');
-		
+
 		this.web3_provider_url = (config && (typeof config["web3_provider_url"] != 'undefined') ? config["web3_provider_url"] : 'http://localhost');
 		this.web3_provider_port= (config && (typeof config["web3_provider_port"] != 'undefined') ? config["web3_provider_port"] : '8545');
 
@@ -154,7 +164,7 @@ class Global {
 		this.hook_arrays = [];
 
 		// web3
-		this.web3instance = null;
+		//this.web3instance = null;
 	}
 	
 	initServer() {
@@ -468,7 +478,7 @@ class Global {
 		return this.web3_provider_url + ':' + this.web3_provider_port;
 	}
 	
-	getWeb3Provider() {
+	/*getWeb3Provider() {
 		var Web3 = this.require('web3');
 
 		var web3providerfullurl = this.getWeb3ProviderFullUrl();
@@ -491,9 +501,12 @@ class Global {
 		this.log("web3 instance created");
 		
 		return this.web3instance;
-	}
+	}*/
 	
 	getMySqlConnection() {
+		if (this.mysqlconnection)
+			return this.mysqlconnection;
+		
 		var MySqlConnection = require('./model/mysqlcon.js')
 		
 		var sqlcon = new MySqlConnection(this, this.mysql_host, this.mysql_port, this.mysql_database, this.mysql_username, this.mysql_password);
@@ -501,20 +514,49 @@ class Global {
 		if (this.mysql_table_prefix)
 			sqlcon.setTablePrefix(this.mysql_table_prefix);
 		
+		this.mysqlconnection = sqlcon;
+		
+		// increment to never end connection
+		this.mysqlconnection.open();
+		
 		return sqlcon;
 	}
 	
 
+	overrideConsoleLog() {
+		if (this.overrideconsolelog == true)
+			return;
+		
+		this.overrideconsolelog = true;
+		
+		// capture current log function
+		this.orgconsolelog = console.log;
+		
+		var self = this;
+		
+		console.log = function(message) {
+			    self.log(message);
+		}; 
+	}
+	
+	releaseConsoleLog() {
+		this.overrideconsolelog = false;
+		
+		console.log = this.orgconsolelog ; 
+	}
 	
 	log(string) {
-		if (this.enable_log == 0)
+		if ((this.enable_log == 0) || (this.execution_env != 'dev'))
 			return; // logging to console disabled
 		
 		var line = new Date().toISOString() + ": ";
 		
 		line += string;
 		
-		console.log(line);
+		if (this.overrideconsolelog)
+			this.orgconsolelog(line); // we've overloaded console.log
+		else
+			console.log(line);
 		
 		if ( (this.write_to_log_file != 0)  && (this.can_write_to_log_file) && (this.logPath)) {
 			var fs = require('fs');
