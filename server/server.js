@@ -20,12 +20,12 @@ if (!process.env.NODE_PATH) {
 var Global = require('./includes/common/global.js');
 
 // setting global var in Global
-if (process.env.ETHEREUM_WEBAPP_BASE_DIR) {
-	Global.ETHEREUM_WEBAPP_BASE_DIR = process.env.ETHEREUM_WEBAPP_BASE_DIR;
+if (process.env.ETHEREUM_READER_SERVER_BASE_DIR) {
+	Global.ETHEREUM_WEBAPP_BASE_DIR = process.env.ETHEREUM_READER_SERVER_BASE_DIR;
 }
 
-if (process.env.ETHEREUM_WEBAPP_EXEC_DIR) {
-	Global.ETHEREUM_WEBAPP_EXEC_DIR = process.env.ETHEREUM_WEBAPP_EXEC_DIR;
+if (process.env.ETHEREUM_READER_SERVER_EXEC_DIR) {
+	Global.ETHEREUM_WEBAPP_EXEC_DIR = process.env.ETHEREUM_READER_SERVER_EXEC_DIR;
 }
 
 
