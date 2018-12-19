@@ -74,22 +74,23 @@ else {
 
 global.log("****Server initialization*****");
 
-//register services
-var Service;
-
-//local services
-Service = require('./local/restserver/service.js');
-var restservice = new Service();
-global.registerServiceInstance(restservice);
-
-Service = require('./local/ethreader/service.js');
-var ethreaderservice = new Service();
-global.registerServiceInstance(ethreaderservice);
-
-//standard services (in ./includes)
-
-//initialization
 try {
+
+	//register services
+	var Service;
+	
+	//local services
+	Service = require('./local/restserver/service.js');
+	var restservice = new Service();
+	global.registerServiceInstance(restservice);
+	
+	Service = require('./local/ethreader/service.js');
+	var ethreaderservice = new Service();
+	global.registerServiceInstance(ethreaderservice);
+	
+	//standard services (in ./includes)
+	
+	//initialization
 	global.initServer();
 }
 catch(e) {
@@ -118,6 +119,7 @@ global.log("size of accounts in memory cache of            :" + ethreaderservice
 
 global.log("");
 global.log("****Rest Server*****");
+global.log("REST Server listening on  " + global.config['server_listening_port']);
 global.log("anonymous request limit                        :" + restservice.enable_anonymous_request_limit);
 global.log("anonymous request limit of requests            :" + restservice.max_anonymous_request_limit_limit);
 global.log("anonymous request windows in seconds           :" + restservice.max_anonymous_request_limit_windows/1000);
@@ -131,12 +133,20 @@ global.log("");
 
 global.log("****Loading express*****");
 
-//starting express
-var app = global.getServiceInstance('restserver').startRestServer();
+try {
 
-//
-// middle-ware
-global.getServiceInstance('restserver').startMiddleware();
+	//starting express
+	var app = global.getServiceInstance('restserver').startRestServer();
+	
+	//
+	// middle-ware
+	global.getServiceInstance('restserver').startMiddleware();
+}
+catch(e) {
+	global.log("ERROR during express load: " + e);
+	global.log(e.stack);
+}
+
 
 global.log("*********");
 

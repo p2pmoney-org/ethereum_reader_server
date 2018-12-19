@@ -29,6 +29,13 @@ class EthReaderRoutes {
 		
 		var route_root_path = global.route_root_path;
 
+		  // deployment
+		app.route(route_root_path + '/config')
+		  .get(function(req, res) { controllers.config(req, res); });
+
+		app.route(route_root_path + '/logs/server/tail')
+		.get(function(req, res) { controllers.get_logs_server_tail(req, res); });
+	
 		  // ethereum node
 		app.route(route_root_path + '/node')
 		  .get(function(req, res) { controllers.node(req, res); });

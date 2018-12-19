@@ -7,9 +7,9 @@
 //requires
 //should be in this precise order to respect
 //the non circular dependencies of objects
-var Global = require('../service.js');
+/*var Global = require('../service.js');
 
-var global = Global.getGlobalInstance();
+var global = Global.getGlobalInstance();*/
 
 var Utility = require('../model/utility.js');
 
@@ -31,28 +31,93 @@ class EthReaderControllers {
 	constructor(glob) {
 		this.global = glob;
 	}
+	
+	// deployment routes
+	config(req, res) {
+		// GET
+		var global = this.global;
+		
+		var globalconfig = global.readJson('config');
+		var config = {};
+		
+		if (globalconfig.server_env === 'dev') {
+			config = globalconfig;
+		}
+		else {
+			config.server_env = "prod";
+			
+			config.rest_server_url = globalconfig.rest_server_url;
+			config.rest_server_api_path = globalconfig.rest_server_api_path;
+		}
+		
+		
+		var jsonresult = {status: 1
+				, config: config};
+		
+		global.log('/config json result is ' + JSON.stringify(jsonresult));
+		
+		res.json(jsonresult);
+		
+	}
 
+	get_logs_server_tail(req, res) {
+		// GET
+		var global = this.global;
+
+		global.log("logs_server_tail called");
+		
+		var lines = [];
+		
+		if (global.config.server_env === 'dev') {
+			lines = global.tail_log_file();
+		}
+		
+		var jsonresult = {status: 1, lines:  lines};
+	  	
+	  	res.json(jsonresult);
+	  	
+	}
+	
+	
+	
 	// ethereum node Routes
 
 	node(req, res) {
+		// GET
+		var global = this.global;
 		var ethnode = EthNode.getEthNode();
 		
-		var islistening = ethnode.isListening();
-		var peercount = ethnode.getPeerCount();
-		var issyncing = ethnode.isSyncing();
-		var currentblock = ethnode.getCurrentBlockNumber();
-		var highestblock = ethnode.getHighestBlockNumber();
+		global.log("node called");
+
+		try {
+			var islistening = ethnode.isListening();
+			var peercount = ethnode.getPeerCount();
+			var issyncing = ethnode.isSyncing();
+			var currentblock = ethnode.getCurrentBlockNumber();
+			var highestblock = ethnode.getHighestBlockNumber();
+			
+			var json = {
+					islistening: islistening,
+					peercount: peercount,
+					issyncing: issyncing,
+					currentblock: currentblock,
+					highestblock: highestblock
+			};
+		}
+		catch(e) {
+			global.log("exception in node: " + e);
+		}
 		
-		var json = {
-				islistening: islistening,
-				peercount: peercount,
-				issyncing: issyncing,
-				currentblock: currentblock,
-				highestblock: highestblock
-		};
 		
-		var jsonresult = {status: 1
-				, data: [json]};
+		if (json) {
+			var jsonresult = {status: 1
+					, data: [json]};
+		}
+		else {
+			var jsonresult = {status: 0
+					, error: "could not retrieve node info"};
+		}
+		
 		
 		global.log('/node json result is ' + JSON.stringify(jsonresult));
 		
@@ -62,6 +127,7 @@ class EthReaderControllers {
 
 
 	node_hashrate(req, res) {
+		var global = this.global;
 		var ethnode = EthNode.getEthNode();
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
 		
@@ -92,6 +158,7 @@ class EthReaderControllers {
 	//statistics
 
 	difficulty(req, res) {
+		var global = this.global;
 		//var lastblock = Block.getLatestBlock();
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
 		
@@ -119,6 +186,7 @@ class EthReaderControllers {
 	};
 
 	gasPrice(req, res) {
+		var global = this.global;
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
 
 		var gasPrice = Statistics.getGasPrice();
@@ -145,6 +213,7 @@ class EthReaderControllers {
 	}
 
 	miningEstimator(req, res) {
+		var global = this.global;
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
 
 		var miningEstimate = Statistics.getMiningEstimate();
@@ -252,6 +321,7 @@ class EthReaderControllers {
 
 
 	blocks(req, res) {
+		var global = this.global;
 		var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
 		var count = (req.params.count !== undefined ? parseInt(req.params.count) : 1);
 		
@@ -298,6 +368,7 @@ class EthReaderControllers {
 	};
 
 	blocks_range(req, res) {
+		var global = this.global;
 		var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
 		var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : global.max_returned_blocks);
 		
@@ -344,6 +415,7 @@ class EthReaderControllers {
 	};
 
 	blocks_count(req, res) {
+		var global = this.global;
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
 
 		var block = Block.getLatestBlock();
@@ -369,6 +441,7 @@ class EthReaderControllers {
 	};
 
 	blocks_range_txs(req, res) {
+		var global = this.global;
 		var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
 		var toBlock = (req.params.to !== undefined ? parseInt(req.params.to) : global.max_returned_blocks);
 		
@@ -409,6 +482,7 @@ class EthReaderControllers {
 
 	// block Routes
 	block(req, res) {
+		var global = this.global;
 		var blockId = (req.params.id !== undefined ? req.params.id : 0);
 
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -452,6 +526,7 @@ class EthReaderControllers {
 	};
 
 	block_transactions(req, res) {
+		var global = this.global;
 		var blockId = (req.params.id !== undefined ? req.params.id : 0);
 
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -485,6 +560,7 @@ class EthReaderControllers {
 	// tx Routes
 
 	transaction(req, res) {
+		var global = this.global;
 		var txahash = (req.params.id !== undefined ? req.params.id : null);
 
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -526,6 +602,7 @@ class EthReaderControllers {
 	};
 
 	transactions_count(req, res) {
+		var global = this.global;
 		var address = (req.params.id !== undefined ? req.params.id : null);
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -624,6 +701,7 @@ class EthReaderControllers {
 
 
 	transactions(req, res) {
+		var global = this.global;
 		var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : 1);
 		var count = (req.params.count !== undefined ? parseInt(req.params.count) : 1);
 
@@ -710,6 +788,7 @@ class EthReaderControllers {
 
 
 	account(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -740,6 +819,7 @@ class EthReaderControllers {
 	};
 
 	accounts(req, res) {
+		var global = this.global;
 		var accountaddressesstring = req.params.ids;
 		var accountaddresses = accountaddressesstring.split(',');
 		
@@ -773,6 +853,7 @@ class EthReaderControllers {
 
 	//source
 	account_source(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -792,6 +873,7 @@ class EthReaderControllers {
 
 	//account mining
 	account_mined(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var bforcefullsearch = (req.params.full && (req.params.full == "full") ? true : false);
 		
@@ -837,6 +919,7 @@ class EthReaderControllers {
 
 
 	account_mined_today(req, res) {
+		var global = this.global;
 		// returned the numbers of blocks mined for current day from an account
 		var accountaddr = req.params.id;
 		
@@ -874,6 +957,7 @@ class EthReaderControllers {
 	};
 
 	account_mininghistory(req, res) {
+		var global = this.global;
 		// returned the numbers of blocks mined for current day from an account
 		var accountaddr = req.params.id;
 		
@@ -939,6 +1023,7 @@ class EthReaderControllers {
 	};
 
 	account_miningunclehistory(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -956,6 +1041,7 @@ class EthReaderControllers {
 
 	//account transactions
 	account_txs(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : -1);
 		
@@ -991,6 +1077,7 @@ class EthReaderControllers {
 	};
 
 	account_previous_txs(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var offsetasked = (req.params.offset !== undefined ? parseInt(req.params.offset) : 0);
 		var count = (req.params.count !== undefined ? parseInt(req.params.count) : global.max_returned_transactions);
@@ -1029,6 +1116,7 @@ class EthReaderControllers {
 	};
 
 	account_next_txs(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : -1);
 		var count = (req.params.count !== undefined ? parseInt(req.params.count) : global.max_returned_transactions);
@@ -1066,6 +1154,7 @@ class EthReaderControllers {
 	};
 
 	account_txs_in_blocks(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var offset = (req.params.offset !== undefined ? parseInt(req.params.offset) : -1);
 		var fromBlock = (req.params.from !== undefined ? parseInt(req.params.from) : 0);
@@ -1109,6 +1198,7 @@ class EthReaderControllers {
 	};
 
 	account_txs_before_block(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
 		
@@ -1161,6 +1251,7 @@ class EthReaderControllers {
 	};
 
 	account_txs_after_block(req, res) {
+		var global = this.global;
 		var accountaddr = req.params.id;
 		var blockid = (req.params.blockid !== undefined ? parseInt(req.params.blockid) : -1);
 		
@@ -1242,6 +1333,7 @@ class EthReaderControllers {
 
 
 	contract(req, res) {
+		var global = this.global;
 		var contractaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -1339,6 +1431,7 @@ class EthReaderControllers {
 	}
 
 	contract_state(req, res) {
+		var global = this.global;
 		var contractaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();
@@ -1399,6 +1492,7 @@ class EthReaderControllers {
 	};
 
 	contract_get(req, res) {
+		var global = this.global;
 		var contractaddr = req.params.id;
 		
 		var nodeblocknumber = EthNode.getNodeCurrentBlockNumber();

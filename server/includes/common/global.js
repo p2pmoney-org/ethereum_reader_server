@@ -566,6 +566,79 @@ class Global {
 		}
 	}
 	
+	log_directory() {
+		var path = require('path');
+		return path.dirname(this.logPath);
+	}
+	
+	tail_file(filepath, nlines) {
+		var fs = require("fs");
+
+		let getLastLines = function (filename, lineCount, callback) {
+		  let stream = fs.createReadStream(filename, {
+		    flags: "r",
+		    encoding: "utf-8",
+		    fd: null,
+		    mode: 438, // 0666 in Octal
+		    bufferSize: 64 * 1024
+		  });
+
+		  let data = "";
+		  let lines = [];
+		  
+		  stream.on("data", function (moreData) {
+		    data += moreData;
+		    
+		    let worklines = data.split('\r');
+		    
+		    let end = worklines.length;
+		    let start = (worklines.length - lineCount > 0 ? worklines.length - lineCount : 0);
+		    
+		    lines = worklines.slice(start, end);
+		    
+		    data = lines.join('\r');
+		  });
+
+		  stream.on("error", function () {
+		    callback("Error");
+		  });
+
+		  stream.on("end", function () {
+		    callback(null, lines);
+		  });
+
+		};
+		
+		var finished = false;
+		var result = [];
+
+		getLastLines(filepath, nlines, function (err, lines) {
+			if (!err)
+				result = lines;
+			
+			finished = true;
+		});		
+		
+		// wait to turn into synchronous call
+		while(!finished)
+		{require('deasync').runLoopOnce();}
+		
+		return result;
+	}
+	
+	tail_log_file(filename = 'server', nlines = 200) {
+		var logPath;
+		
+		if (filename == 'server')
+			logPath = this.logPath;
+		else
+			logPath = this.log_directory() + '/' + filename + '.log';
+		
+		var lines = this.tail_file(logPath, nlines);
+		
+		return lines;
+	}
+	
 	guid() {
 		  return this.generateUUID(8) + '-' + this.generateUUID(4) + '-' + this.generateUUID(4) + '-' +
 		  this.generateUUID(4) + '-' + this.generateUUID(12);
