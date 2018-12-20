@@ -91,12 +91,14 @@ class EthReaderControllers {
 
 		try {
 			var islistening = ethnode.isListening();
+			var networkid = ethnode.getNetworkId();
 			var peercount = ethnode.getPeerCount();
 			var issyncing = ethnode.isSyncing();
 			var currentblock = ethnode.getCurrentBlockNumber();
 			var highestblock = ethnode.getHighestBlockNumber();
 			
 			var json = {
+					networkid: networkid,
 					islistening: islistening,
 					peercount: peercount,
 					issyncing: issyncing,
@@ -106,6 +108,7 @@ class EthReaderControllers {
 		}
 		catch(e) {
 			global.log("exception in node: " + e);
+			global.log(e.stack);
 		}
 		
 		

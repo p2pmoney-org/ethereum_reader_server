@@ -29,6 +29,26 @@ class EthereumNode {
 	constructor() {
 	}
 	
+	getNetworkId() {
+		var networkid = null;
+		
+		var finished = false;
+		
+		var promise =  web3.eth.net.getId(function(error, netId){
+			if (!error) {
+				networkid = netId;
+			}
+			
+			finished = true;
+		});
+		
+		// wait to turn into synchronous call
+		while(finished === false)
+		{require('deasync').runLoopOnce();}
+		
+		return networkid;
+	}
+	
 	
 	isListening() {
 		var listening = null;
