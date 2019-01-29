@@ -475,33 +475,11 @@ class Global {
 	}
 	
 	getWeb3ProviderFullUrl() {
-		return this.web3_provider_url + ':' + this.web3_provider_port;
+		if ((this.web3_provider_port) && (this.web3_provider_port !== "") && (this.web3_provider_port !== 80))
+			return this.web3_provider_url + ':' + this.web3_provider_port;
+		else
+			return this.web3_provider_url;
 	}
-	
-	/*getWeb3Provider() {
-		var Web3 = this.require('web3');
-
-		var web3providerfullurl = this.getWeb3ProviderFullUrl();
-		
-		var web3Provider =   new Web3.providers.HttpProvider(web3providerfullurl);
-		
-		return web3Provider;
-	}
-	
-	getWeb3Instance() {
-		if (this.web3instance)
-			return this.web3instance;
-		
-		var Web3 = this.require('web3');
-
-		var web3Provider = this.getWeb3Provider();
-		  
-		this.web3instance = new Web3(web3Provider);		
-		
-		this.log("web3 instance created");
-		
-		return this.web3instance;
-	}*/
 	
 	getMySqlConnection() {
 		if (this.mysqlconnection)
@@ -683,6 +661,15 @@ class Global {
 		var val = Constants[name];
 		
 		return val;
+	}
+	
+	getCurrentVersion() {
+		//return this.getConstant('CURRENT_VERSION');
+		return (this.current_version ? this.current_version : "undefined");
+	}
+	
+	getVersionSupported() {
+		return (this.version_support ? this.version_support : [this.getCurrentVersion()]);
 	}
 	
 	// services

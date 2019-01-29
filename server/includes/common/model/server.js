@@ -40,6 +40,9 @@ class Server {
 	}
 	
 	addGlobalParameter(key, value) {
+		if ((!key) || (!value))
+			return;
+		
 		// turn to string
 		var valuestring = value.toString();
 		var type = 0;
