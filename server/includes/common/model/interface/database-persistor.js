@@ -330,6 +330,101 @@ class DataBasePersistor {
 		mysqlcon.close();
 	}
 	
+	putSessionState(array) {
+		var global = this.global;
+		
+		var sessionuuid = array['sessionuuid'];
+		
+		var useruuid = array['useruuid'];
+		
+		var userarray = ( useruuid ? this._getUserArrayFromUUID(useruuid) : {id: -1});
+		var userid = (userarray['id'] ? userarray['id'] : -1);
+		
+		var mysqlcon = global.getMySqlConnection();
+		
+		var createdon = mysqlcon.escape(new Date(array['createdon']));
+		var lastpingon = mysqlcon.escape(new Date(array['lastpingon']));
+		var isauthenticated = (array['isauthenticated'] == true ? 1 : 0);;
+
+		
+		var tablename = mysqlcon.getTableName('sessions');
+		
+		var sql;
+		
+		// open connection
+		mysqlcon.open();
+		
+		var current = this.getSession(sessionuuid);
+		
+		if (current.uuid !== undefined) {
+			sql = `UPDATE ` +  tablename + ` SET
+					  UserId = ` + userid + `,
+					  LastPingOn = ` + lastpingon + `,
+					  IsAuthenticated = ` + isauthenticated + `
+				WHERE SessionId = ` + current.id + `;`;
+		}
+		else {
+			var salt = this.global.generateUUID(16);
+			
+			sql = `INSERT INTO ` +  tablename + ` (
+					  SessionUUID,
+					  UserId,
+					  CreatedOn,
+					  LastPingOn,
+					  IsAuthenticated
+			  )
+			  VALUES (
+					  '` + sessionuuid + `',
+					  ` + userid + `,
+					  ` + createdon + `,
+					  ` + lastpingon + `,
+					  ` + isauthenticated + `
+			  );`;
+		}
+		
+		
+		
+		// execute query
+		var result = mysqlcon.execute(sql);
+		
+		// close connection
+		mysqlcon.close();
+	}
+	
+	putSessionVariables(array) {
+		var global = this.global;
+		
+		var sessionuuid = array['sessionuuid'];
+		
+		var mysqlcon = global.getMySqlConnection();
+		
+		var sessionvariables = array['sessionvariables'];
+
+		
+		var tablename = mysqlcon.getTableName('sessions');
+		
+		var sql;
+		
+		// open connection
+		mysqlcon.open();
+		
+		var current = this.getSession(sessionuuid);
+		
+		if (current.uuid !== undefined) {
+			sql = `UPDATE ` +  tablename + ` SET
+					  SessionVariables = ` + (sessionvariables ? `'` + sessionvariables + `'` : `''`) + `
+				WHERE SessionId = ` + current.id + `;`;
+		}
+		
+		
+		
+		// execute query
+		var result = mysqlcon.execute(sql);
+		
+		// close connection
+		mysqlcon.close();
+	}
+	
 }
 
 

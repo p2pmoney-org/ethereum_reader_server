@@ -66,7 +66,7 @@ class MySqlConnection {
 			
 			this.connection.connect(function(err) {
 			  if (err)  {
-				  global.log("error connecting to mysql database; " + err);
+				  global.log("error connecting to mysql database: " + err);
 				  
 				  self.connectionactive = false;
 				  finished = true;
@@ -74,11 +74,13 @@ class MySqlConnection {
 				  //throw err;
 			  }
 			  else {
+				  global.log("successfully connected to mysql database: " + database);
+
 				  self.connectionactive = true;
 				  finished = true;
 			  }
 			  
-		});	
+			});	
 			
 		}
 		catch(e) {
@@ -88,11 +90,9 @@ class MySqlConnection {
 			global.log("exception connecting to mysql database; " + e);
 		}
 		
-		
-		
 		// wait to turn into synchronous call
 		while(!finished)
-		{require('deasync').runLoopOnce();}
+		{global.deasync().runLoopOnce(this);}
 	}
 	
 	getMysqlServerVersion() {
@@ -186,7 +186,7 @@ class MySqlConnection {
 		
 	    // wait to turn into synchronous call
 		while(!finished)
-		{require('deasync').runLoopOnce();}
+		{global.deasync().runLoopOnce(this);}
 		
 		return result;
 	}

@@ -3,6 +3,26 @@
  */
 'use strict';
 
+var _deasync = class {
+	constructor(global) {
+		this.global = global;
+		
+		this.deasync_module = require('deasync');
+	}
+	
+	runLoopOnce(caller) {
+		//this.global.log('_deasync.runLoopOnce' + (caller ? ' type of caller ' + (caller.constructor.name != 'String' ? caller.constructor.name : caller) : ''));
+		
+		return this.deasync_module.runLoopOnce();
+	}
+	
+	sleep(time, caller) {
+		//this.global.log('_deasync.sleep' + (caller ? ' type of caller ' + (caller.constructor.name != 'String' ? caller.constructor.name : caller) : ''));
+
+		return this.deasync_module.sleep(time);
+	}
+}
+
 var globalinstance;
 //var GlobalWeb3;
 
@@ -165,6 +185,8 @@ class Global {
 
 		// web3
 		//this.web3instance = null;
+		
+		this._deasync = null;
 	}
 	
 	initServer() {
@@ -194,6 +216,24 @@ class Global {
 	reload() {
 		// dirty exit to restart process
 		this.exit();
+	}
+	
+	getExecutionEnvironment() {
+		return this.execution_env;
+	}
+	
+	setExecutionEnvironment(env) {
+		if (!env)
+			return;
+		
+		switch(env) {
+			case 'dev':
+				this.execution_env = 'dev';
+				break;
+				
+			default:
+				break;
+		}
 	}
 	
 	readJson(jsonname) {
@@ -482,8 +522,17 @@ class Global {
 	}
 	
 	getMySqlConnection() {
-		if (this.mysqlconnection)
-			return this.mysqlconnection;
+		/*if (this.mysqlconnection)
+			return this.mysqlconnection;*/
+		
+		if (!this.mysqlconnectionpool) {
+			this.mysqlconnectionpool = [];
+		}
+		
+		if (this.mysqlconnectionpool.length) {
+			// could do round robin
+			return this.mysqlconnectionpool[0];
+		}
 		
 		var MySqlConnection = require('./model/mysqlcon.js')
 		
@@ -492,10 +541,14 @@ class Global {
 		if (this.mysql_table_prefix)
 			sqlcon.setTablePrefix(this.mysql_table_prefix);
 		
-		this.mysqlconnection = sqlcon;
+		//this.mysqlconnection = sqlcon;
+		
+		this.mysqlconnectionpool.push(sqlcon);
+		
+		this.log('growing mysqlconnectionpool to ' + this.mysqlconnectionpool.length);
 		
 		// increment to never end connection
-		this.mysqlconnection.open();
+		sqlcon.open();
 		
 		return sqlcon;
 	}
@@ -521,6 +574,13 @@ class Global {
 		this.overrideconsolelog = false;
 		
 		console.log = this.orgconsolelog ; 
+	}
+	
+	enableLog(choice) {
+		if (choice === true)
+			this.enable_log = 1;
+		else
+			this.enable_log = 0;
 	}
 	
 	log(string) {
@@ -617,6 +677,32 @@ class Global {
 		return lines;
 	}
 	
+	createTracker(name) {
+		var Tracker = class {
+			constructor(global, name, uuid) {
+				this.global = global;
+				this.name = name
+				this.uuid = uuid
+				this.start = Date.now();
+			}
+			
+			log(string) {
+				var global = this.global;
+
+				if (global.execution_env != 'dev')
+					return;
+				
+				var now = Date.now();
+				var diff = (now - this.start) + ' ms';
+				
+				global.log('Step At ' + diff + ' tracker ' + this.uuid + (this.name ? ' - ' + this.name : '') + (string ? ': ' + string : ''));
+			}
+		}
+		
+		var uuid = this.guid();
+		return new Tracker(this, name, uuid);
+	}
+	
 	guid() {
 		  return this.generateUUID(8) + '-' + this.generateUUID(4) + '-' + this.generateUUID(4) + '-' +
 		  this.generateUUID(4) + '-' + this.generateUUID(12);
@@ -655,6 +741,17 @@ class Global {
 		}
 	}
 	
+	// deasync
+	deasync() {
+		if (this._deasync)
+			return this._deasync;
+		
+		this._deasync = new _deasync(this);
+		
+		return this._deasync;
+	}
+	
+	// global values
 	getConstant(name) {
 		var Constants = require('./constants.js');
 		

@@ -3,6 +3,50 @@
  */
 'use strict';
 
+var _SessionMutex = class {
+	
+	constructor(global, session) {
+		this.global = global;
+		this.session = session;
+	}
+	
+	wait(maxtime, callback) {
+		var global = this.global;
+		var session = this.session;
+		
+		var self = this;
+		
+		while(!session.initializationfinished) {
+			global.deasync().runLoopOnce(this);
+		}
+		
+	}
+	
+	static get(session) {
+		if (!_SessionMutex.map)
+			_SessionMutex.map = Object.create(null);
+		
+		var key = session.getSessionUUID();
+		
+		if (!_SessionMutex.map[key]) {
+			var global = session.getGlobalInstance();
+			_SessionMutex.map[key] = new _SessionMutex(global, session);
+		}
+		
+		// remove old mutexes
+		for (var key in _SessionMutex.map) {
+		    if (!_SessionMutex.map[key]) continue;
+			
+		    var mutex = _SessionMutex.map[key];
+		    
+		    if ((mutex) && (mutex.session) && (mutex.session.isready))
+		    	delete _SessionMutex.map[key];
+		}
+		
+		return _SessionMutex.map[key];
+	}
+}
+
 
 class SessionMap {
 	constructor(global) {
@@ -112,7 +156,6 @@ class Session {
 		
 		// initialization
 		this.isready = false;
-		this.initializationpromises = [];
 
 		// authentication
 		this.isauthenticated = false;
@@ -161,6 +204,60 @@ class Session {
 			
 			
 			persistor.putSession(array);
+		}
+		
+	}
+	
+	_saveState() {
+		this.global.log('Session._saveState called');
+
+		var commonservice = this.global.getServiceInstance('common');
+		var server = commonservice.getServerInstance();
+		var persistor = server.getPersistor();
+		
+		if (persistor.canPersistData()) {
+			var array = {};
+			
+			array['sessionuuid'] = this.session_uuid;
+			
+			var user = this.getUser();
+			array['useruuid'] = (user ? user.getUserUUID() : null);
+			
+			array['createdon'] = this.creation_date;
+			array['lastpingon'] = this.last_ping_date;
+			
+			array['isauthenticated'] = this.isauthenticated;
+			
+			persistor.putSessionState(array);
+		}
+		
+	}
+	
+	_saveVariables() {
+		this.global.log('Session._saveVariables called');
+
+		var commonservice = this.global.getServiceInstance('common');
+		var server = commonservice.getServerInstance();
+		var persistor = server.getPersistor();
+		
+		if (persistor.canPersistData()) {
+			var array = {};
+			
+			array['sessionuuid'] = this.session_uuid;
+			
+			var user = this.getUser();
+			array['useruuid'] = (user ? user.getUserUUID() : null);
+			
+			array['createdon'] = this.creation_date;
+			array['lastpingon'] = this.last_ping_date;
+			
+			array['isauthenticated'] = this.isauthenticated;
+			
+			var jsonstring = JSON.stringify(this.sessionvar);
+			array['sessionvariables'] =  Buffer.from(jsonstring, 'utf8');
+			
+			
+			persistor.putSessionVariables(array);
 		}
 		
 	}
@@ -353,7 +450,7 @@ class Session {
 	ping() {
 		this.last_ping_date = Date.now();
 		
-		//this.save();
+		//this._saveState();
 		// should update only lastpingon
 	}
 	
@@ -451,84 +548,18 @@ class Session {
 		var server = commonservice.getServerInstance();
 		var persistor = server.getPersistor();
 		
+		global.log('Session._sessionRecord called for ' + sessionuuid);
+		
 		if (persistor.canPersistData()) {
+			global.log('Session._sessionRecord reading in persistor session ' + sessionuuid);
 			var array = persistor.getSession(sessionuuid);
-			global.log('session ' + sessionuuid + ' array is ' + JSON.stringify(array));
+			global.log('Session._sessionRecord session ' + sessionuuid + ' array is ' + JSON.stringify(array));
+		}
+		else {
+			global.log('Session._sessionRecord session ' + sessionuuid + ' persistor says can not persist data');
 		}
 		
 		return array;
-	}
-	
-	pushFinalInitializationPromise(promise) {
-		if (promise) {
-			if (this.isready)
-				throw "session initialization has finished, it's no longer possible to push promises at this stage";
-			
-			this.initializationpromises.push(promise);
-		}
-	}
-	
-	static _waitSessionReady(session, delay, callback) {
-		
-		if (typeof session.waitsince === "undefined")
-			session.waitsince = Date.now(); // first time of a re-entrant call
-		
-		var waitedfor = Date.now() - session.waitsince;
-		var sessionuuid = session.getSessionUUID();
-		
-		if (waitedfor > (200*delay)) {
-			console.log('session initialization started long ago: ' + waitedfor);
-			
-			if (callback)
-				callback('too long', false);
-			
-			return Promise.resolve(false);
-		}
-		
-		if (session.initializationpromises) {
-			console.log('creating a gofree promise after session initialization for session ' + sessionuuid);
-			
-			var gofreepromise = new Promise(function (resolve, reject) {
-				resolve(true);
-				
-				return true;
-			})
-			.then(function (res) {
-				console.log('waiting for session initialization returned: ' + sessionuuid);
-				
-				if (callback)
-					callback(null, res);
-			})
-			.catch(function (err) {
-				console.log("error waiting for session initialization for session " + sessionuuid + " : " + err);
-				
-				if (callback)
-					callback(err, false);
-			});
-			
-			session.initializationpromises.push(gofreepromise);
-		}
-		else {
-			console.log('no initialization promise array for session ' + sessionuuid);
-			
-			if (callback)
-				callback('no initialization promise array for session ' + sessionuuid, false);
-		}
-		
-		/*if (typeof session.waitloopnum === "undefined")
-			session.waitloopnum = 0;
-		else
-			session.waitloopnum++;
-		
-		console.log('session ready wait loop number ' + session.waitloopnum + ' for session ' + session.getSessionUUID());
-
-		if (!session.isready) {
-			if (session.waitloopnum < 200)
-			setTimeout(function() {
-	        	Session._waitSessionReady(session, delay, callback);
-	        }, delay);
-			
-		}*/
 	}
 	
 	static getSession(global, sessionuuid) {
@@ -544,27 +575,6 @@ class Session {
 		if (mapvalue !== undefined) {
 			// is already in map
 			session = mapvalue;
-			
-			if (session.isready === false) {
-				global.log('session ' + sessionuuid + ' is not ready, going into a lock');
-				
-				var finished = false;
-				
-				Session._waitSessionReady(session, 100, function(err, res) {
-					global.log('finished waiting session is ready for ' + sessionuuid);
-					finished = true;
-				});
-
-				// pseudo lock for this critical section
-				while(!finished)
-				{require('deasync').runLoopOnce();}
-				
-				if (session.isready === false)
-					global.log('session ' + sessionuuid + ' was not ready, going out of lock');
-				else
-					global.log('session ' + sessionuuid + ' is ready, going successfully out of lock');
-
-			}
 		}
 		else {
 			// create a new session object
@@ -577,10 +587,22 @@ class Session {
 			// to avoid having persistence async operation creating a re-entry
 			sessionmap.pushSession(session, true); // fast push to avoid calls to mysql
 			
-			var initializationfinished = false;
+		}
+		
+		if (session.isready === false) {
+			session.initializationfinished = false;
 			
 			global.log('creating session initialization promise for session ' + sessionuuid);
-			var initializationpromise = new Promise(function (resolve, reject) {
+			
+			// we may go through this section several times because of issues with re-entrance
+			// and nodejs/javascript mono-threaded approach of stacking execution bits
+			
+			/// create a mutex to start unstacking calls once one of them has finished the initialization
+			var sessionmutex = _SessionMutex.get(session);
+			
+			global.log('session sessionmutex retrieved for session ' + sessionuuid);
+			
+			var promise = new Promise(function (resolve, reject) {
 				try {
 					global.log('starting initialization of session object for ' + sessionuuid);
 
@@ -610,6 +632,8 @@ class Session {
 					
 					session.isready = true; // end of pseudo lock on session initialization
 					
+					global.log('session ' + sessionuuid + ' is now ready!');
+
 					resolve(true);
 				}
 				catch(e) {
@@ -617,31 +641,33 @@ class Session {
 					global.log(error);
 					
 					reject(error);
-				}
+			}
 			})
 			.then(function (res) {
-				global.log('session ' + sessionuuid + ' is now ready!');
+				global.log('session ' + sessionuuid + ' resolved the initialization promise');
 
-				initializationfinished = true;
+				session.initializationfinished = true;
+				
+				return Promise.resolve(true);
 			})
 			.catch(function (err) {
-				console.log("error in session initialization for sessionuuid " + sessionuuid + ": " + err);
+				global.log("error in session initialization for sessionuuid " + sessionuuid + ": " + err);
 				
-				initializationfinished = true;
+				session.initializationfinished = true;
+				
+				return Promise.reject("error in session initialization for sessionuuid " + sessionuuid + ": " + err);
 			});
 			
 			global.log('session initialization promise created for session ' + sessionuuid);
-
-			while(!initializationfinished)
-			{require('deasync').runLoopOnce();}
-
-			global.log('number of locks waiting ' + session.initializationpromises.length);
 			
-			// releasing all locks
-			Promise.all(session.initializationpromises).then(function(res) {
-				global.log('session initialization all locks released for session ' + sessionuuid);
+			sessionmutex.wait(10000, function() {
+				global.log('session going out of mutex for session ' + sessionuuid);
 			});
+			
+			global.log('session initialized for session ' + sessionuuid);
+			
 		}
+
 		
 		return session;
 	}

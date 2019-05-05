@@ -22,7 +22,7 @@ exports.version = function(req, res) {
 
 
 exports.version_support = function(req, res) {
-	var version_support = global.version_support;
+	var version_support = global.getVersionSupported();
 	
 	var jsonlist = [];
 

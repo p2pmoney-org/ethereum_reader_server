@@ -44,8 +44,8 @@ if (global.execution_env) {
 	// DEBUG
 }*/
 
-global.current_version = "0.1.1";
-global.version_support = ["0.0.1", "0.1.0", "0.1.1"];
+global.current_version = "0.1.2";
+global.version_support = ["0.0.1", "0.1.0", "0.1.1", "0.1"];
 
 
 
