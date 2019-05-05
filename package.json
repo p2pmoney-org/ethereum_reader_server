@@ -1,7 +1,13 @@
 {
   "name": "ethereum_reader_server",
-  "version": "1.0.0",
+  "version": "0.1.2",
   "description": "REST API to access in read-only mode an ethereum RPC server",
+  "author": "p2pmoney.org",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/github.com/p2pmoney-org/ethereum_reader_server.git"
+  },
   "main": "index.js",
   "dependencies": {
     "body-parser": "^1.18.2",
@@ -10,7 +16,7 @@
     "express-rate-limit": "^2.9.0",
     "forever": "^0.15.3",
     "shelljs": "^0.8.2",
-    "web3": "^1.0.0-beta.22"
+    "web3": "1.0.0-beta.34"
   },
   "devDependencies": {
     "nodemon": "^1.12.1"
@@ -19,7 +25,5 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "forever ./server/server.js",
     "startdev": "nodemon ./server/server.js"
-  },
-  "author": "p2pmoney.org",
-  "license": "ISC"
+  }
 }
